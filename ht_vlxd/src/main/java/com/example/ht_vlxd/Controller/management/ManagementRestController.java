@@ -34,6 +34,11 @@ import java.util.*;
 @RestController
 @RequestMapping("/api/management")
 public class ManagementRestController {
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.example.ht_vlxd.Service.sales.BusinessWorkflowService workflow;
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.example.ht_vlxd.Service.auth.CurrentUser currentUser;
+
 
     private final DonHangRepository donHangRepository;
     private final DonHangChiTietRepository donHangChiTietRepository;
@@ -86,7 +91,7 @@ public class ManagementRestController {
         BigDecimal tongDoanhThu = BigDecimal.ZERO;
         for (DonHang dh : donHangs) {
             String status = dh.getTrangThai();
-            if ("HOAN_THANH".equals(status) || "DA_XAC_NHAN".equals(status) || "DANG_GIAO".equals(status)) {
+            if ("HOAN_THANH".equals(status)) {
                 tongDoanhThu = tongDoanhThu.add(dh.getTongTien() != null ? dh.getTongTien() : BigDecimal.ZERO);
             }
         }
@@ -95,6 +100,7 @@ public class ManagementRestController {
         List<CongNo> congNos = congNoRepository.findAll();
         BigDecimal tongDuNo = BigDecimal.ZERO;
         for (CongNo cn : congNos) {
+            if (!"PHAI_THU".equals(cn.getLoaiCongNo())) continue;
             if (!"DA_THANH_TOAN".equals(cn.getTrangThai())) {
                 BigDecimal no = cn.getSoTienNo() != null ? cn.getSoTienNo() : BigDecimal.ZERO;
                 BigDecimal daTt = cn.getSoTienDaTt() != null ? cn.getSoTienDaTt() : BigDecimal.ZERO;
@@ -179,7 +185,7 @@ public class ManagementRestController {
                 item.put("title", "Duyệt chiết khấu hợp đồng " + hd.getMaHopDong());
                 String khTen = (hd.getKhachHang() != null && hd.getKhachHang().getNguoiDung() != null) ?
                         hd.getKhachHang().getNguoiDung().getHoTen() : "Không rõ";
-                item.put("description", "Đề xuất ký với KH: " + khTen + " - Trị giá: " + hd.getGiaTri() + "đ");
+                item.put("description", "KH: " + khTen + " - Giá trị: " + hd.getGiaTri() + "đ; cọc thỏa thuận: " + hd.getTienDatCoc() + "; chi tiết: " + hd.getChiTiet().stream().map(l -> l.getHangHoa().getTenHang() + " × " + l.getSoLuong() + " @ " + l.getDonGia()).collect(java.util.stream.Collectors.joining(", ")) + "; điều khoản: " + hd.getDieuKhoanTt());
                 item.put("targetKey", hd.getMaHopDong());
                 approvals.add(item);
             }
@@ -221,7 +227,7 @@ public class ManagementRestController {
         // 4. Warehouse/Inventory Slips in NHAP status (Draft waiting for approval)
         List<PhieuKho> slips = phieuKhoRepository.findAll();
         for (PhieuKho pk : slips) {
-            if ("NHAP".equals(pk.getTrangThai())) {
+            if ("NHAP".equals(pk.getTrangThai()) || "CHO_DUYET".equals(pk.getTrangThai())) {
                 Map<String, Object> item = new HashMap<>();
                 item.put("id", pk.getId());
                 item.put("type", "INVENTORY_SLIP");
@@ -234,7 +240,7 @@ public class ManagementRestController {
                 } else if (pk.getDonHang() != null) {
                     doiTac = " cho đơn hàng: " + pk.getDonHang().getMaDonHang();
                 }
-                item.put("description", "Người lập: " + nguoiLap + doiTac + ". Ghi chú: " + pk.getGhiChu());
+                item.put("description", "Người lập: " + nguoiLap + doiTac + "; chi tiết: " + pk.getChiTiet().stream().map(l -> l.getHangHoa().getTenHang() + " × " + l.getSoLuong() + " @ " + l.getDonGia()).collect(java.util.stream.Collectors.joining(", ")) + "; biên bản nhập: " + pk.getBienBanNhapHang() + "; ghi chú: " + pk.getGhiChu());
                 item.put("targetKey", pk.getMaPhieu());
                 approvals.add(item);
             }
@@ -310,99 +316,28 @@ public class ManagementRestController {
     // ACTION ENDPOINTS
     // ====================================================
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/contracts/approve")
     public ResponseEntity<?> approveContract(@RequestBody Map<String, String> body) {
-        String maHopDong = body.get("maHopDong");
-        HopDong hd = hopDongRepository.findByMaHopDong(maHopDong);
-        if (hd == null) {
-            return ResponseEntity.badRequest().body("Không tìm thấy hợp đồng.");
-        }
-        hd.setTrangThai("HIEU_LUC");
-        hopDongRepository.save(hd);
-        return ResponseEntity.ok(Map.of("message", "Đã duyệt và kích hoạt hợp đồng thành công!"));
+        workflow.approveContract(body.get("maHopDong"));
+        return ResponseEntity.ok(java.util.Map.of("message", "Đã duyệt hợp đồng; kinh doanh tiếp tục ghi nhận ký."));
     }
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/returns/approve")
     public ResponseEntity<?> approveReturn(@RequestBody Map<String, String> body) {
-        String maDoiTra = body.get("maDoiTra");
-        DoiTraHang dth = doiTraHangRepository.findByMaDoiTra(maDoiTra);
-        if (dth == null) {
-            return ResponseEntity.badRequest().body("Không tìm thấy yêu cầu đổi trả.");
-        }
-        dth.setTrangThai("DA_DUYET");
-        dth.setNgayXuLy(LocalDateTime.now());
-        dth.setGhiChuXuLy("Ban Quản Lý phê duyệt.");
-        doiTraHangRepository.save(dth);
-
-        // Giảm trừ công nợ nếu hình thức là TRẢ HÀNG (TRA)
-        if ("TRA".equals(dth.getLoai()) && dth.getDonHang() != null) {
-            List<CongNo> cnList = congNoRepository.findByKhachHangId(dth.getKhachHang().getId());
-            for (CongNo cn : cnList) {
-                if (cn.getDonHang() != null && cn.getDonHang().getId().equals(dth.getDonHang().getId())) {
-                    BigDecimal rate = dth.getHangHoa() != null ? dth.getHangHoa().getGiaBanLe() : BigDecimal.ZERO;
-                    BigDecimal returnVal = dth.getSoLuong().multiply(rate);
-                    BigDecimal currentNo = cn.getSoTienNo();
-                    cn.setSoTienNo(currentNo.subtract(returnVal).max(BigDecimal.ZERO));
-                    if (cn.getSoTienNo().compareTo(cn.getSoTienDaTt()) <= 0) {
-                        cn.setTrangThai("DA_THANH_TOAN");
-                    }
-                    congNoRepository.save(cn);
-                }
-            }
-
-            // Cộng trả lại kho (khi hoàn trả thì tăng số lượng lên)
-            Kho targetKho = null;
-            List<PhieuKho> slips = phieuKhoRepository.findAll();
-            for (PhieuKho pk : slips) {
-                if ("XUAT".equals(pk.getLoaiPhieu()) && pk.getDonHang() != null && pk.getDonHang().getId().equals(dth.getDonHang().getId())) {
-                    targetKho = pk.getKho();
-                    break;
-                }
-            }
-            if (targetKho == null) {
-                List<Kho> khos = khoRepository.findAll();
-                if (!khos.isEmpty()) targetKho = khos.get(0);
-            }
-
-            if (targetKho != null && dth.getHangHoa() != null) {
-                final Kho finalKho = targetKho;
-                Optional<TonKho> optTk = tonKhoRepository.findAll().stream()
-                        .filter(tk -> tk.getHangHoa().getId().equals(dth.getHangHoa().getId()) && tk.getKho().getId().equals(finalKho.getId()))
-                        .findFirst();
-
-                TonKho tk;
-                if (optTk.isPresent()) {
-                    tk = optTk.get();
-                } else {
-                    tk = new TonKho();
-                    tk.setHangHoa(dth.getHangHoa());
-                    tk.setKho(finalKho);
-                    tk.setSoLuong(BigDecimal.ZERO);
-                }
-
-                BigDecimal currentQty = tk.getSoLuong() != null ? tk.getSoLuong() : BigDecimal.ZERO;
-                BigDecimal returnQty = dth.getSoLuong() != null ? dth.getSoLuong() : BigDecimal.ZERO;
-                tk.setSoLuong(currentQty.add(returnQty));
-                tonKhoRepository.save(tk);
-            }
-        }
-        return ResponseEntity.ok(Map.of("message", "Đã phê duyệt yêu cầu đổi trả thành công!"));
+        workflow.approveReturn(body.get("maDoiTra"), true);
+        return ResponseEntity.ok(java.util.Map.of("message", "Đã duyệt yêu cầu thu hồi."));
     }
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/returns/reject")
     public ResponseEntity<?> rejectReturn(@RequestBody Map<String, String> body) {
-        String maDoiTra = body.get("maDoiTra");
-        DoiTraHang dth = doiTraHangRepository.findByMaDoiTra(maDoiTra);
-        if (dth == null) {
-            return ResponseEntity.badRequest().body("Không tìm thấy yêu cầu đổi trả.");
-        }
-        dth.setTrangThai("TU_CHOI");
-        dth.setNgayXuLy(LocalDateTime.now());
-        dth.setGhiChuXuLy("Ban Quản Lý từ chối phê duyệt.");
-        doiTraHangRepository.save(dth);
-        return ResponseEntity.ok(Map.of("message", "Đã từ chối yêu cầu đổi trả thành công!"));
+        workflow.approveReturn(body.get("maDoiTra"), false);
+        return ResponseEntity.ok(java.util.Map.of("message", "Đã từ chối yêu cầu."));
     }
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/reports/approve")
     public ResponseEntity<?> approveReport(@RequestBody Map<String, String> body) {
         Long reportId = Long.valueOf(body.get("reportId"));
@@ -410,58 +345,18 @@ public class ManagementRestController {
         if (bc == null) {
             return ResponseEntity.badRequest().body("Không tìm thấy báo cáo.");
         }
+        workflow.require("CHO_DUYET".equals(bc.getTrangThai()), "Báo cáo không ở trạng thái chờ duyệt.");
+        bc.setNguoiDuyet(currentUser.get());
         bc.setTrangThai("DA_DUYET");
         bc.setNgayDuyet(LocalDateTime.now());
         baoCaoRepository.save(bc);
         return ResponseEntity.ok(Map.of("message", "Đã phê duyệt báo cáo thành công!"));
     }
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/inventory-slips/approve")
     public ResponseEntity<?> approveInventorySlip(@RequestBody Map<String, String> body) {
-        String maPhieu = body.get("maPhieu");
-        PhieuKho pk = phieuKhoRepository.findByMaPhieu(maPhieu);
-        if (pk == null) {
-            return ResponseEntity.badRequest().body("Không tìm thấy phiếu kho.");
-        }
-        if (!"NHAP".equals(pk.getTrangThai())) {
-            return ResponseEntity.badRequest().body("Phiếu kho đã được xử lý từ trước.");
-        }
-
-        // Update TonKho dynamically
-        List<PhieuKhoChiTiet> chiTiets = phieuKhoChiTietRepository.findByPhieuKhoId(pk.getId());
-        for (PhieuKhoChiTiet ct : chiTiets) {
-            HangHoa hh = ct.getHangHoa();
-            Kho kho = pk.getKho();
-            if (hh != null && kho != null) {
-                Optional<TonKho> optTk = tonKhoRepository.findAll().stream()
-                        .filter(tk -> tk.getHangHoa().getId().equals(hh.getId()) && tk.getKho().getId().equals(kho.getId()))
-                        .findFirst();
-
-                TonKho tk;
-                if (optTk.isPresent()) {
-                    tk = optTk.get();
-                } else {
-                    tk = new TonKho();
-                    tk.setHangHoa(hh);
-                    tk.setKho(kho);
-                    tk.setSoLuong(BigDecimal.ZERO);
-                }
-
-                BigDecimal currentQty = tk.getSoLuong() != null ? tk.getSoLuong() : BigDecimal.ZERO;
-                BigDecimal diff = ct.getSoLuong() != null ? ct.getSoLuong() : BigDecimal.ZERO;
-
-                if ("NHAP".equals(pk.getLoaiPhieu())) {
-                    tk.setSoLuong(currentQty.add(diff));
-                } else if ("XUAT".equals(pk.getLoaiPhieu())) {
-                    tk.setSoLuong(currentQty.subtract(diff));
-                }
-                tonKhoRepository.save(tk);
-            }
-        }
-
-        pk.setTrangThai("DA_DUYET");
-        phieuKhoRepository.save(pk);
-
-        return ResponseEntity.ok(Map.of("message", "Đã duyệt phiếu kho và cập nhật số lượng tồn kho!"));
+        workflow.approveSlip(body.get("maPhieu"));
+        return ResponseEntity.ok(java.util.Map.of("message", "Đã duyệt phiếu và cập nhật kho/công nợ."));
     }
 }

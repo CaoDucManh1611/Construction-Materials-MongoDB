@@ -1,4 +1,12 @@
 package com.example.ht_vlxd;
+import com.example.ht_vlxd.Model.auth.*;
+import com.example.ht_vlxd.Model.customer.*;
+import com.example.ht_vlxd.Model.sales.*;
+import com.example.ht_vlxd.Model.product.*;
+import com.example.ht_vlxd.Model.estimation.*;
+import com.example.ht_vlxd.Repository.customer.*;
+import com.example.ht_vlxd.Repository.sales.*;
+
 
 import com.example.ht_vlxd.Service.sales.DonHangService;
 import com.example.ht_vlxd.Service.product.HangHoaService;
@@ -15,6 +23,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
+@org.springframework.test.context.ActiveProfiles("test")
 @Transactional
 public class CustomerServiceTests {
 

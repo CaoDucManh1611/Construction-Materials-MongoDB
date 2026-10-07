@@ -15,6 +15,29 @@ import java.util.List;
 
 @Controller
 public class TemplateViewController {
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.example.ht_vlxd.Service.product.CatalogApprovalService catalog;
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.example.ht_vlxd.Service.auth.CurrentUser sessionUser;
+
+    @ModelAttribute("currentAccount")
+    public com.example.ht_vlxd.Model.auth.NguoiDung currentAccount(org.springframework.security.core.Authentication auth) {
+        return auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getName()) ? null : sessionUser.get();
+    }
+
+    @ModelAttribute("workspaceUrl")
+    public String workspaceUrl(org.springframework.security.core.Authentication auth) {
+        var account = currentAccount(auth);
+        if (account == null) return "/login";
+        return switch (account.getRole().getName()) {
+            case "NV_KINH_DOANH" -> "/kinh_doanh/quan_ly_don_hang";
+            case "NV_KHO" -> "/quan_ly_kho/quan_ly_kho";
+            case "NV_KE_TOAN" -> "/ke_toan/quan_ly_tai_chinh_va_cong_no";
+            case "BAN_QUAN_LY" -> "/ban_quan_ly/dashboard_tong_quan";
+            case "QUAN_TRI_VIEN" -> "/quan_tri_vien/quan_ly_tai_khoan";
+            default -> "/khach_hang/don_hang_cua_toi";
+        };
+    }
 
     private final HangHoaService hangHoaService;
     private final DanhMucService danhMucService;
@@ -25,7 +48,9 @@ public class TemplateViewController {
     }
 
     @GetMapping({"/", "/home"})
-    public String index() {
+    public String index(Model model) {
+        model.addAttribute("hangHoas", hangHoaService.getAllProducts().stream().limit(4).toList());
+        model.addAttribute("danhMucs", danhMucService.getAll());
         return "index";
     }
 
@@ -90,34 +115,39 @@ public class TemplateViewController {
         return "kinh_doanh/danh_muc_hang_hoa";
     }
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/kinh_doanh/danh_muc_hang_hoa/add")
     public String addProduct(
+            @RequestParam(required = false) Long id,
             @RequestParam String maHang,
             @RequestParam String tenHang,
             @RequestParam Long danhMucId,
             @RequestParam String donViTinh,
             @RequestParam String quyCach,
-            @RequestParam Double giaBanLe,
-            @RequestParam(required = false) Double giaBanSi,
+            @RequestParam BigDecimal giaBanLe,
+            @RequestParam(required = false) BigDecimal giaBanSi,
             @RequestParam(required = false) String anhUrl,
             @RequestParam(value = "anhFile", required = false) MultipartFile anhFile) {
 
         String finalAnhUrl = anhUrl;
         if (anhFile != null && !anhFile.isEmpty()) {
             try {
-                String fileName = java.util.UUID.randomUUID().toString() + "_" + anhFile.getOriginalFilename();
+                String contentType = anhFile.getContentType();
+                if (anhFile.getSize() > 5_000_000 || !java.util.Set.of("image/jpeg", "image/png", "image/webp").contains(contentType))
+                    throw new IllegalArgumentException("Ảnh phải là JPEG/PNG/WebP và không vượt 5 MB.");
+                String fileName = java.util.UUID.randomUUID() + ("image/jpeg".equals(contentType) ? ".jpg" : "image/png".equals(contentType) ? ".png" : ".webp");
                 String userDir = System.getProperty("user.dir");
-                
+
                 // Paths: src/main/resources/static/images/uploads and target/classes/static/images/uploads
                 java.nio.file.Path srcDir = java.nio.file.Paths.get(userDir, "src", "main", "resources", "static", "images", "uploads");
                 java.nio.file.Path targetDir = java.nio.file.Paths.get(userDir, "target", "classes", "static", "images", "uploads");
-                
+
                 java.nio.file.Files.createDirectories(srcDir);
                 java.nio.file.Files.createDirectories(targetDir);
-                
+
                 java.nio.file.Path srcFile = srcDir.resolve(fileName);
                 java.nio.file.Path targetFile = targetDir.resolve(fileName);
-                
+
                 // Copy stream to both locations
                 try (java.io.InputStream in1 = anhFile.getInputStream()) {
                     java.nio.file.Files.copy(in1, srcFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
@@ -125,14 +155,15 @@ public class TemplateViewController {
                 try (java.io.InputStream in2 = anhFile.getInputStream()) {
                     java.nio.file.Files.copy(in2, targetFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
                 }
-                
+
                 finalAnhUrl = "/images/uploads/" + fileName;
             } catch (Exception e) {
-                e.printStackTrace();
+                throw new IllegalArgumentException("Không lưu được ảnh hàng hóa.", e);
             }
         }
 
         HangHoa hangHoa = new HangHoa();
+        hangHoa.setId(id);
         hangHoa.setMaHang(maHang);
         hangHoa.setTenHang(tenHang);
         if (danhMucId != null) {
@@ -142,11 +173,11 @@ public class TemplateViewController {
         }
         hangHoa.setDonViTinh(donViTinh);
         hangHoa.setQuyCach(quyCach);
-        hangHoa.setGiaBanLe(BigDecimal.valueOf(giaBanLe));
+        hangHoa.setGiaBanLe(giaBanLe);
         if (giaBanSi != null) {
-            hangHoa.setGiaBanSi(BigDecimal.valueOf(giaBanSi));
+            hangHoa.setGiaBanSi(giaBanSi);
         } else {
-            hangHoa.setGiaBanSi(BigDecimal.valueOf(giaBanLe));
+            hangHoa.setGiaBanSi(giaBanLe);
         }
         if (finalAnhUrl != null && !finalAnhUrl.trim().isEmpty()) {
             hangHoa.setAnhUrl(finalAnhUrl);
@@ -154,33 +185,38 @@ public class TemplateViewController {
             hangHoa.setAnhUrl("📦");
         }
         hangHoa.setTrangThai(TrangThaiHangHoa.KINH_DOANH);
-        hangHoaService.save(hangHoa);
+        catalog.proposeProduct(hangHoa);
 
         return "redirect:/kinh_doanh/danh_muc_hang_hoa";
     }
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/kinh_doanh/danh_muc_hang_hoa/delete")
     public String deleteProduct(@RequestParam Long id) {
-        hangHoaService.deleteProduct(id);
+        catalog.proposeDisable("HANG_HOA", id);
         return "redirect:/kinh_doanh/danh_muc_hang_hoa";
     }
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/kinh_doanh/danh_muc/add")
     public String addCategory(
+            @RequestParam(required = false) Long id,
             @RequestParam String maDanhMuc,
             @RequestParam String ten,
             @RequestParam(required = false) String moTa) {
         DanhMuc dm = new DanhMuc();
+        dm.setId(id);
         dm.setMaDanhMuc(maDanhMuc);
         dm.setTen(ten);
         dm.setMoTa(moTa);
-        danhMucService.save(dm);
+        catalog.proposeCategory(dm);
         return "redirect:/kinh_doanh/danh_muc_hang_hoa";
     }
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/kinh_doanh/danh_muc/delete")
     public String deleteCategory(@RequestParam Long id) {
-        danhMucService.delete(id);
+        catalog.proposeDisable("DANH_MUC", id);
         return "redirect:/kinh_doanh/danh_muc_hang_hoa";
     }
 

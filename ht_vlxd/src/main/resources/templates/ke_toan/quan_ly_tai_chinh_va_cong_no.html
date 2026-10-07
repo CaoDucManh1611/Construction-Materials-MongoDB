@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
-<head>
+<head><link rel="icon" type="image/svg+xml" href="/images/store/favicon.svg">
+<script src="/js/security.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Quản lý tài chính & công nợ - Sài Gòn CMC</title>
@@ -41,8 +42,10 @@
     .detail-info-row .value { font-weight: 600; }
     .loading-spinner { text-align:center; padding:40px; color:var(--text-muted); font-size:14px; }
   </style>
+<link rel="stylesheet" href="/css/site.css">
+<script src="/js/ui.js" defer></script>
 </head>
-<body>
+<body class="workspace">
 
 <div th:replace="~{bo_cuc/header :: header}"></div>
 
@@ -444,7 +447,9 @@
     const congNoId = document.getElementById('coll-cong-no-id').value;
     const soTien = document.getElementById('coll-so-tien').value;
     const hinhThuc = document.getElementById('coll-hinh-thuc').value;
-    const maGd = document.getElementById('coll-ma-gd').value;
+    const transactionInput = document.getElementById('coll-ma-gd');
+    if (!transactionInput.value) transactionInput.value = crypto.randomUUID();
+    const maGd = transactionInput.value;
     const ghiChu = document.getElementById('coll-ghi-chu').value;
 
     if (!congNoId) { alert('Vui lòng chọn công nợ cần thu tiền!'); return; }
@@ -460,7 +465,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           congNoId: parseInt(congNoId),
-          soTien: parseFloat(soTien),
+          soTien: soTien,
           hinhThuc,
           maGiaoDich: maGd,
           ghiChu,
@@ -474,7 +479,7 @@
         loadDebts();
         loadSummary();
       } else {
-        alert('❌ Lỗi: ' + data);
+        alert('❌ Lỗi: ' + (data.message || data));
       }
     } catch {
       alert('❌ Lỗi kết nối máy chủ. Thử lại sau.');
@@ -500,5 +505,6 @@
   loadDebts();
 </script>
 
+<script src="/js/business.js"></script>
 </body>
 </html>

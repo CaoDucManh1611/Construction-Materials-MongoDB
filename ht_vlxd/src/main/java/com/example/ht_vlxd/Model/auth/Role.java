@@ -1,15 +1,22 @@
 package com.example.ht_vlxd.Model.auth;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DocumentReference;
+import org.springframework.data.mongodb.core.mapping.Field;
+import org.springframework.data.mongodb.core.mapping.FieldType;
+import org.springframework.data.mongodb.core.index.Indexed;
 
-@Entity
-@Table(name = "role")
+@Document(collection = "role")
 public class Role {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "name", nullable = false, unique = true, length = 50)
+    @Version
+    private Long version;
+
+    @Indexed(unique = true, sparse = true)
     private String name;
 
     public Role() {}

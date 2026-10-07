@@ -2,61 +2,81 @@ package com.example.ht_vlxd.Model.sales;
 import com.example.ht_vlxd.Model.customer.KhachHang;
 import com.example.ht_vlxd.Model.auth.NguoiDung;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DocumentReference;
+import org.springframework.data.mongodb.core.mapping.Field;
+import org.springframework.data.mongodb.core.mapping.FieldType;
+import org.springframework.data.mongodb.core.index.Indexed;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "hop_dong")
+@Document(collection = "hop_dong")
 public class HopDong {
+    private Long nguoiDuyetId;
+    public Long getNguoiDuyetId() { return nguoiDuyetId; }
+    public void setNguoiDuyetId(Long value) { this.nguoiDuyetId = value; }
+    private LocalDateTime ngayDuyet;
+    public LocalDateTime getNgayDuyet() { return ngayDuyet; }
+    public void setNgayDuyet(LocalDateTime value) { this.ngayDuyet = value; }
+    private java.util.List<DonHangChiTiet> chiTiet = new java.util.ArrayList<>();
+    public java.util.List<DonHangChiTiet> getChiTiet() { return chiTiet; }
+    public void setChiTiet(java.util.List<DonHangChiTiet> value) { this.chiTiet = value; }
+    @Field(targetType = FieldType.DECIMAL128)
+    private BigDecimal tienDaThu = BigDecimal.ZERO;
+    public BigDecimal getTienDaThu() { return tienDaThu; }
+    public void setTienDaThu(BigDecimal value) { this.tienDaThu = value; }
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "ma_hop_dong", nullable = false, unique = true, length = 30)
+    @Version
+    private Long version;
+
+    @Indexed(unique = true, sparse = true)
     private String maHopDong;
 
-    @ManyToOne
-    @JoinColumn(name = "don_hang_id")
+    @DocumentReference
     private DonHang donHang;
 
-    @ManyToOne
-    @JoinColumn(name = "khach_hang_id", nullable = false)
+    @DocumentReference
     private KhachHang khachHang;
 
-    @ManyToOne
-    @JoinColumn(name = "nv_lap_id", nullable = false)
+    @DocumentReference
     private NguoiDung nvLap;
 
-    @Column(name = "ngay_ky", nullable = false)
+
     private LocalDate ngayKy;
 
-    @Column(name = "ngay_hieu_luc", nullable = false)
+
     private LocalDate ngayHieuLuc;
 
-    @Column(name = "ngay_het_han")
+
     private LocalDate ngayHetHan;
 
-    @Column(name = "gia_tri", nullable = false)
+
+    @Field(targetType = FieldType.DECIMAL128)
     private BigDecimal giaTri;
 
-    @Column(name = "tien_dat_coc")
+
+    @Field(targetType = FieldType.DECIMAL128)
     private BigDecimal tienDatCoc = BigDecimal.ZERO;
 
-    @Column(name = "dieu_khoan_tt", columnDefinition = "TEXT")
+
     private String dieuKhoanTt;
 
-    @Column(name = "noi_dung", columnDefinition = "TEXT")
+
     private String noiDung;
 
-    @Column(name = "trang_thai", nullable = false)
+
     private String trangThai = "NHAP";
 
-    @Column(name = "file_url", length = 500)
+
     private String fileUrl;
 
-    @Column(name = "ngay_tao")
+
     private LocalDateTime ngayTao = LocalDateTime.now();
 
     public HopDong() {}

@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
-<head>
+<head><link rel="icon" type="image/svg+xml" href="/images/store/favicon.svg">
+<script src="/js/security.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Quản lý nhà cung cấp - Sài Gòn CMC</title>
@@ -15,8 +16,10 @@
     .ncc-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:16px; }
     .loading-spinner { text-align:center; padding:40px; color:var(--text-muted); font-size:14px; }
   </style>
+<link rel="stylesheet" href="/css/site.css">
+<script src="/js/ui.js" defer></script>
 </head>
-<body>
+<body class="workspace">
 
 <div th:replace="~{bo_cuc/header :: header}"></div>
 
@@ -366,5 +369,6 @@
   loadNCC();
 </script>
 
+<script src="/js/business.js"></script>
 </body>
 </html>

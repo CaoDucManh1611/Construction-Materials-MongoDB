@@ -31,6 +31,11 @@ import java.util.*;
 @RestController
 @RequestMapping("/api/warehouse")
 public class WarehouseRestController {
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.example.ht_vlxd.Service.sales.BusinessWorkflowService workflow;
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.example.ht_vlxd.Service.auth.CurrentUser currentUser;
+
 
     private final TonKhoRepository tonKhoRepository;
     private final PhieuKhoRepository phieuKhoRepository;
@@ -233,6 +238,7 @@ public class WarehouseRestController {
 
         List<Map<String, Object>> donHangList = new ArrayList<>();
         for (DonHang dh : donHangs) {
+            if (!"DA_XAC_NHAN".equals(dh.getTrangThai())) continue;
             Map<String, Object> m = new HashMap<>();
             m.put("id", dh.getId());
             m.put("maDonHang", dh.getMaDonHang());
@@ -262,6 +268,7 @@ public class WarehouseRestController {
     // TẠO PHIẾU KHO MỚI (Nhân viên kho tạo, chờ BQL duyệt)
     // ====================================================
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/slips/create")
     public ResponseEntity<?> createSlip(@RequestBody Map<String, Object> body) {
         try {
@@ -282,11 +289,18 @@ public class WarehouseRestController {
                 maPhieu = String.format("%s-%s-%04d", prefix, year, nextNum);
             }
 
+            workflow.require(java.util.Set.of("NHAP", "XUAT").contains(loaiPhieu), "Loại phiếu không hợp lệ.");
+            workflow.require(body.get("chiTiet") instanceof List<?> && !((List<?>) body.get("chiTiet")).isEmpty(), "Phiếu cần ít nhất một dòng hàng.");
             PhieuKho pk = new PhieuKho();
             pk.setMaPhieu(maPhieu);
             pk.setLoaiPhieu(loaiPhieu);
             pk.setNgayLap(LocalDateTime.now());
             pk.setGhiChu(ghiChu);
+            if ("NHAP".equals(loaiPhieu)) {
+                String report = (String) body.getOrDefault("bienBanNhapHang", "");
+                workflow.require(!report.isBlank(), "Cần biên bản kiểm tra hàng nhập.");
+                pk.setBienBanNhapHang(report);
+            }
             pk.setTrangThai("NHAP"); // Draft, waiting management approval
 
             Kho kho = khoRepository.findById(khoId).orElse(null);
@@ -304,8 +318,10 @@ public class WarehouseRestController {
 
             // nguoiTao: get first admin/warehouse user as placeholder (real auth not implemented)
             List<NguoiDung> users = nguoiDungRepository.findAll();
-            if (!users.isEmpty()) pk.setNguoiTao(users.get(0));
+            pk.setNguoiTao(currentUser.get());
 
+            if ("NHAP".equals(loaiPhieu)) workflow.require(pk.getNhaCungCap() != null, "Phải chọn nhà cung cấp.");
+            if ("XUAT".equals(loaiPhieu)) workflow.require(pk.getDonHang() != null, "Phải chọn đơn hàng.");
             pk = phieuKhoRepository.save(pk);
 
             // Save chi tiet lines
@@ -318,13 +334,13 @@ public class WarehouseRestController {
                     String ghiChuCt = line.containsKey("ghiChu") ? (String) line.get("ghiChu") : "";
 
                     HangHoa hh = hangHoaRepository.findById(hhId).orElse(null);
-                    if (hh == null) continue;
+                    workflow.require(hh != null, "Hàng hóa không tồn tại.");
 
                     PhieuKhoChiTiet ct = new PhieuKhoChiTiet();
                     ct.setPhieuKho(pk);
                     ct.setHangHoa(hh);
                     ct.setSoLuong(soLuong);
-                    ct.setDonGia(BigDecimal.ZERO);
+                    ct.setDonGia(new BigDecimal(line.getOrDefault("donGia", "0").toString()));
                     ct.setGhiChu(ghiChuCt);
                     phieuKhoChiTietRepository.save(ct);
                 }
@@ -336,7 +352,7 @@ public class WarehouseRestController {
             return ResponseEntity.ok(resp);
 
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("Lỗi tạo phiếu: " + e.getMessage());
+            throw new IllegalArgumentException("Thao tác không thành công: " + e.getMessage(), e);
         }
     }
 
@@ -344,6 +360,7 @@ public class WarehouseRestController {
     // KIỂM KÊ KHO (Điều chỉnh số lượng thực tế)
     // ====================================================
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/stock/adjust")
     public ResponseEntity<?> adjustStock(@RequestBody Map<String, Object> body) {
         try {
@@ -357,8 +374,9 @@ public class WarehouseRestController {
             BigDecimal soLuongSoSach = tk.getSoLuong() != null ? tk.getSoLuong() : BigDecimal.ZERO;
             BigDecimal chenh = soLuongThuc.subtract(soLuongSoSach);
 
-            tk.setSoLuong(soLuongThuc);
-            tonKhoRepository.save(tk);
+            workflow.require(soLuongThuc.signum() >= 0, "Số lượng thực tế không được âm.");
+            workflow.require(lyDo != null && !lyDo.isBlank(), "Cần lý do kiểm kê.");
+            workflow.require(chenh.signum() != 0, "Không có chênh lệch kiểm kê.");
 
             // Create an adjustment slip to record the change
             List<PhieuKho> existing = phieuKhoRepository.findAll();
@@ -374,12 +392,15 @@ public class WarehouseRestController {
             adjSlip.setMaPhieu(maPhieu);
             adjSlip.setLoaiPhieu(chenh.compareTo(BigDecimal.ZERO) >= 0 ? "NHAP" : "XUAT");
             adjSlip.setKho(tk.getKho());
+            adjSlip.setTonKhoKiemKeId(tk.getId());
+            adjSlip.setSoLuongSoSach(soLuongSoSach);
+            adjSlip.setSoLuongThucTe(soLuongThuc);
             adjSlip.setNgayLap(LocalDateTime.now());
             adjSlip.setGhiChu("Kiểm kê thực tế. Chênh lệch: " + chenh + ". Lý do: " + lyDo);
-            adjSlip.setTrangThai("DA_DUYET"); // Adjustment slips auto-approved
+            adjSlip.setTrangThai("CHO_DUYET"); // Adjustment slips auto-approved
 
             List<NguoiDung> users = nguoiDungRepository.findAll();
-            if (!users.isEmpty()) adjSlip.setNguoiTao(users.get(0));
+            adjSlip.setNguoiTao(currentUser.get());
 
             adjSlip = phieuKhoRepository.save(adjSlip);
 
@@ -392,7 +413,7 @@ public class WarehouseRestController {
             phieuKhoChiTietRepository.save(ct);
 
             Map<String, Object> resp = new HashMap<>();
-            resp.put("message", String.format("Đã cập nhật tồn kho! Số lượng điều chỉnh: %s%s %s. Biên bản kiểm kê %s đã được ghi nhận.",
+            resp.put("message", String.format("Đã gửi biên bản kiểm kê chờ duyệt! Số lượng điều chỉnh: %s%s %s. Biên bản kiểm kê %s đã được ghi nhận.",
                     chenh.compareTo(BigDecimal.ZERO) > 0 ? "+" : "",
                     chenh.toPlainString(),
                     tk.getHangHoa() != null ? tk.getHangHoa().getDonViTinh() : "",
@@ -401,7 +422,7 @@ public class WarehouseRestController {
             return ResponseEntity.ok(resp);
 
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("Lỗi điều chỉnh kho: " + e.getMessage());
+            throw new IllegalArgumentException("Thao tác không thành công: " + e.getMessage(), e);
         }
     }
 
@@ -418,7 +439,7 @@ public class WarehouseRestController {
         for (DonHang dh : donHangs) {
             // Only show orders that are confirmed and not yet delivered
             String status = dh.getTrangThai();
-            if (!"DA_XAC_NHAN".equals(status) && !"DANG_GIAO".equals(status)) continue;
+            if (!"DA_XUAT_KHO".equals(status) && !"DANG_GIAO".equals(status)) continue;
 
             Map<String, Object> map = new HashMap<>();
             map.put("id", dh.getId());
@@ -430,7 +451,7 @@ public class WarehouseRestController {
             String sdt = dh.getKhachHang() != null && dh.getKhachHang().getNguoiDung() != null
                     ? dh.getKhachHang().getNguoiDung().getSoDienThoai() : "";
             map.put("khachHangTen", khTen);
-            map.put("diaChiGiao", diaChi);
+            map.put("diaChiGiao", dh.getDiaChiGiao());
             map.put("soDienThoai", sdt);
             map.put("ngayDat", dh.getNgayDat() != null ? dh.getNgayDat().format(fmt) : "");
             map.put("tongTien", dh.getTongTien());
@@ -466,6 +487,7 @@ public class WarehouseRestController {
     // LẬP LỘ TRÌNH GIAO HÀNG (Tạo GiaoNhan)
     // ====================================================
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/delivery/create")
     public ResponseEntity<?> createDelivery(@RequestBody Map<String, Object> body) {
         try {
@@ -476,6 +498,8 @@ public class WarehouseRestController {
 
             DonHang dh = donHangRepository.findById(donHangId).orElse(null);
             if (dh == null) return ResponseEntity.badRequest().body("Không tìm thấy đơn hàng.");
+
+            workflow.requireDelivery(dh);
 
             // Check if delivery already created
             List<GiaoNhan> existing = giaoNhanRepository.findByDonHangId(donHangId);
@@ -506,7 +530,7 @@ public class WarehouseRestController {
             if (dh.getKhachHang() != null && dh.getKhachHang().getNguoiDung() != null) {
                 gn.setNguoiNhan(dh.getKhachHang().getNguoiDung().getHoTen());
                 gn.setSoDienThoaiNhan(dh.getKhachHang().getNguoiDung().getSoDienThoai());
-                gn.setDiaChiGiao(dh.getKhachHang().getNguoiDung().getDiaChi());
+                gn.setDiaChiGiao(dh.getDiaChiGiao());
             }
 
             giaoNhanRepository.save(gn);
@@ -521,7 +545,7 @@ public class WarehouseRestController {
             return ResponseEntity.ok(resp);
 
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("Lỗi lập lộ trình: " + e.getMessage());
+            throw new IllegalArgumentException("Thao tác không thành công: " + e.getMessage(), e);
         }
     }
 
@@ -559,97 +583,18 @@ public class WarehouseRestController {
     // XÁC NHẬN BÀN GIAO THÀNH CÔNG
     // ====================================================
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/delivery/confirm-handover")
     public ResponseEntity<?> confirmHandover(@RequestBody Map<String, Object> body) {
-        try {
-            String maGiaoNhan = (String) body.get("maGiaoNhan");
-            String tinhTrang = (String) body.get("tinhTrang"); // OK or LOI
-            String ghiChu = body.containsKey("ghiChu") ? (String) body.get("ghiChu") : "";
-
-            GiaoNhan gn = giaoNhanRepository.findByMaGiaoNhan(maGiaoNhan);
-            if (gn == null) return ResponseEntity.badRequest().body("Không tìm thấy lộ trình giao hàng.");
-
-            gn.setDaBanGiao(true);
-            gn.setNgayBanGiao(LocalDateTime.now());
-            gn.setNgayGiaoThuc(LocalDateTime.now());
-            gn.setGhiChuGiao(gn.getGhiChuGiao() + " | Bàn giao: " + tinhTrang + (ghiChu.isEmpty() ? "" : " - " + ghiChu));
-
-            if ("OK".equals(tinhTrang)) {
-                gn.setTrangThai("DA_GIAO");
-                giaoNhanRepository.save(gn);
-
-                // Update order to HOAN_THANH
-                if (gn.getDonHang() != null) {
-                    DonHang dh = gn.getDonHang();
-                    dh.setTrangThai("HOAN_THANH");
-                    donHangRepository.save(dh);
-
-                    // Deduct inventory stock (giảm trừ số lượng khi giao thành công)
-                    List<DonHangChiTiet> details = donHangChiTietRepository.findByDonHangId(dh.getId());
-                    // Find target Kho from XUAT slip of this DonHang
-                    Kho targetKho = null;
-                    List<PhieuKho> slips = phieuKhoRepository.findAll();
-                    for (PhieuKho pk : slips) {
-                        if ("XUAT".equals(pk.getLoaiPhieu()) && pk.getDonHang() != null && pk.getDonHang().getId().equals(dh.getId())) {
-                            targetKho = pk.getKho();
-                            break;
-                        }
-                    }
-                    if (targetKho == null) {
-                        List<Kho> khos = khoRepository.findAll();
-                        if (!khos.isEmpty()) {
-                            targetKho = khos.get(0);
-                        }
-                    }
-
-                    if (targetKho != null) {
-                        final Kho finalKho = targetKho;
-                        for (DonHangChiTiet ct : details) {
-                            HangHoa hh = ct.getHangHoa();
-                            if (hh == null) continue;
-
-                            Optional<TonKho> optTk = tonKhoRepository.findAll().stream()
-                                    .filter(tk -> tk.getHangHoa().getId().equals(hh.getId()) && tk.getKho().getId().equals(finalKho.getId()))
-                                    .findFirst();
-
-                            TonKho tk;
-                            if (optTk.isPresent()) {
-                                tk = optTk.get();
-                            } else {
-                                tk = new TonKho();
-                                tk.setHangHoa(hh);
-                                tk.setKho(finalKho);
-                                tk.setSoLuong(BigDecimal.ZERO);
-                            }
-
-                            BigDecimal currentQty = tk.getSoLuong() != null ? tk.getSoLuong() : BigDecimal.ZERO;
-                            BigDecimal orderQty = ct.getSoLuong() != null ? ct.getSoLuong() : BigDecimal.ZERO;
-                            tk.setSoLuong(currentQty.subtract(orderQty));
-                            tonKhoRepository.save(tk);
-                        }
-                    }
-                }
-                return ResponseEntity.ok(Map.of("message",
-                        "Bàn giao đơn hàng thành công! Đơn chuyển trạng thái \"Hoàn Thành\". Kế toán sẽ được thông báo quyết toán."));
-            } else {
-                // Delivery failed/issue
-                gn.setTrangThai("THAT_BAI");
-                giaoNhanRepository.save(gn);
-
-                // Keep order in DANG_GIAO, let sales handle return
-                return ResponseEntity.ok(Map.of("message",
-                        "Đã ghi nhận sự vụ lỗi bàn giao! Biên bản sự cố đã lưu. Phòng Kinh Doanh sẽ liên hệ khách hàng xử lý."));
-            }
-
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("Lỗi xác nhận bàn giao: " + e.getMessage());
-        }
+        workflow.handover((String) body.get("maGiaoNhan"), (String) body.get("tinhTrang"), (String) body.getOrDefault("ghiChu", ""));
+        return ResponseEntity.ok(java.util.Map.of("message", "Đã lưu biên bản bàn giao; tồn kho không bị trừ lại."));
     }
 
     // ====================================================
     // BÁO SỰ CỐ LỘ TRÌNH
     // ====================================================
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/delivery/report-issue")
     public ResponseEntity<?> reportIssue(@RequestBody Map<String, Object> body) {
         try {
@@ -659,13 +604,15 @@ public class WarehouseRestController {
             GiaoNhan gn = giaoNhanRepository.findByMaGiaoNhan(maGiaoNhan);
             if (gn == null) return ResponseEntity.badRequest().body("Không tìm thấy lộ trình.");
 
-            gn.setGhiChuGiao((gn.getGhiChuGiao() != null ? gn.getGhiChuGiao() : "") + " | Sự cố: " + moTa);
+            workflow.require("DANG_GIAO".equals(gn.getTrangThai()), "Chỉ ghi sự vụ cho lộ trình đang giao.");
+            workflow.require(moTa != null && !moTa.isBlank(), "Cần mô tả sự vụ.");
+            gn.getBienBanSuVu().add(java.time.LocalDateTime.now() + ": " + moTa);
             giaoNhanRepository.save(gn);
 
             return ResponseEntity.ok(Map.of("message",
-                    "Đã ghi nhận sự cố lộ trình " + maGiaoNhan + ". Quản lý và khách hàng sẽ được thông báo."));
+                    "Đã ghi nhận sự cố lộ trình " + maGiaoNhan + ". Biên bản sự vụ đã được lưu."));
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("Lỗi ghi nhận sự cố: " + e.getMessage());
+            throw new IllegalArgumentException("Thao tác không thành công: " + e.getMessage(), e);
         }
     }
 }

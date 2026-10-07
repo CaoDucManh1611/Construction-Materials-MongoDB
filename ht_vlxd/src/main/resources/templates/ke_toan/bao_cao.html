@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
-<head>
+<head><link rel="icon" type="image/svg+xml" href="/images/store/favicon.svg">
+<script src="/js/security.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Báo cáo tài chính - Sài Gòn CMC</title>
@@ -21,8 +22,10 @@
     .rep-filter-bar { display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; }
     .save-btn-wrap { display:flex; justify-content:flex-end; gap:10px; margin-top:16px; }
   </style>
+<link rel="stylesheet" href="/css/site.css">
+<script src="/js/ui.js" defer></script>
 </head>
-<body>
+<body class="workspace">
 
 <div th:replace="~{bo_cuc/header :: header}"></div>
 
@@ -356,6 +359,7 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          reportKind: type,
           loai: loaiMap[type] || 'TAI_CHINH',
           tieuDe: titleLabel,
           tuNgay: from,
@@ -380,5 +384,6 @@
   }
 </script>
 
+<script src="/js/business.js"></script>
 </body>
 </html>

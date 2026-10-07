@@ -1,4 +1,12 @@
 package com.example.ht_vlxd;
+import com.example.ht_vlxd.Model.auth.*;
+import com.example.ht_vlxd.Model.customer.*;
+import com.example.ht_vlxd.Model.sales.*;
+import com.example.ht_vlxd.Model.product.*;
+import com.example.ht_vlxd.Model.estimation.*;
+import com.example.ht_vlxd.Repository.customer.*;
+import com.example.ht_vlxd.Repository.sales.*;
+
 
 import com.example.ht_vlxd.DTO.estimation.CalculationRequest;
 import com.example.ht_vlxd.DTO.estimation.CalculationResponse;
@@ -93,7 +101,7 @@ public class MaterialEstimationServiceTests {
         // Setup product
         DanhMuc cat = new DanhMuc();
         cat.setMaDanhMuc("DM-003"); // Cement Category
-        
+
         HangHoa hh = new HangHoa();
         hh.setId(4L);
         hh.setTenHang("Xi măng Hà Tiên");
@@ -113,7 +121,7 @@ public class MaterialEstimationServiceTests {
         request.setDienTich(100.0);
         request.setLoaiCongTrinh("NHA_PHO_BTCT");
         request.setSoTang(2);
-        
+
         Map<String, Long> brands = new HashMap<>();
         brands.put("XI_MANG", 4L);
         request.setSanPhamLinhHoat(brands);

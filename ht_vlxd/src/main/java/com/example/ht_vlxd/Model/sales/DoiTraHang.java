@@ -3,55 +3,70 @@ import com.example.ht_vlxd.Model.product.HangHoa;
 import com.example.ht_vlxd.Model.customer.KhachHang;
 import com.example.ht_vlxd.Model.auth.NguoiDung;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DocumentReference;
+import org.springframework.data.mongodb.core.mapping.Field;
+import org.springframework.data.mongodb.core.mapping.FieldType;
+import org.springframework.data.mongodb.core.index.Indexed;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "doi_tra_hang")
+@Document(collection = "doi_tra_hang")
 public class DoiTraHang {
+    private String phanLoai;
+    public String getPhanLoai() { return phanLoai; }
+    public void setPhanLoai(String value) { this.phanLoai = value; }
+    @Field(targetType = FieldType.DECIMAL128)
+    private BigDecimal donGiaGoc = BigDecimal.ZERO;
+    public BigDecimal getDonGiaGoc() { return donGiaGoc; }
+    public void setDonGiaGoc(BigDecimal value) { this.donGiaGoc = value; }
+    private Long khoNhanId;
+    public Long getKhoNhanId() { return khoNhanId; }
+    public void setKhoNhanId(Long value) { this.khoNhanId = value; }
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "ma_doi_tra", nullable = false, unique = true, length = 30)
+    @Version
+    private Long version;
+
+    @Indexed(unique = true, sparse = true)
     private String maDoiTra;
 
-    @ManyToOne
-    @JoinColumn(name = "don_hang_id", nullable = false)
+    @DocumentReference
     private DonHang donHang;
 
-    @ManyToOne
-    @JoinColumn(name = "khach_hang_id", nullable = false)
+    @DocumentReference
     private KhachHang khachHang;
 
-    @Column(name = "loai", nullable = false)
+
     private String loai; // DOI, TRA
 
-    @Column(name = "ly_do", nullable = false, columnDefinition = "TEXT")
+
     private String lyDo;
 
-    @Column(name = "so_luong", nullable = false, precision = 18, scale = 3)
+
+    @Field(targetType = FieldType.DECIMAL128)
     private BigDecimal soLuong;
 
-    @ManyToOne
-    @JoinColumn(name = "hang_hoa_id", nullable = false)
+    @DocumentReference
     private HangHoa hangHoa;
 
-    @Column(name = "ngay_yeu_cau")
+
     private LocalDateTime ngayYeuCau = LocalDateTime.now();
 
-    @Column(name = "trang_thai", nullable = false)
+
     private String trangThai = "CHO_DUYET"; // CHO_DUYET, DA_DUYET, TU_CHOI, HOAN_THANH
 
-    @ManyToOne
-    @JoinColumn(name = "nguoi_xu_ly_id")
+    @DocumentReference
     private NguoiDung nguoiXuLy;
 
-    @Column(name = "ghi_chu_xu_ly", columnDefinition = "TEXT")
+
     private String ghiChuXuLy;
 
-    @Column(name = "ngay_xu_ly")
+
     private LocalDateTime ngayXuLy;
 
     public DoiTraHang() {}

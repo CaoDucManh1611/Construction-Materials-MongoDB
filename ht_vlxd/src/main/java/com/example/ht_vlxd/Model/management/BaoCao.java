@@ -1,50 +1,55 @@
 package com.example.ht_vlxd.Model.management;
 import com.example.ht_vlxd.Model.auth.NguoiDung;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DocumentReference;
+import org.springframework.data.mongodb.core.mapping.Field;
+import org.springframework.data.mongodb.core.mapping.FieldType;
+import org.springframework.data.mongodb.core.index.Indexed;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "bao_cao")
+@Document(collection = "bao_cao")
 public class BaoCao {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "loai", nullable = false)
+    @Version
+    private Long version;
+
+
     private String loai; // TAI_CHINH, TON_KHO, THONG_KE
 
-    @Column(name = "tieu_de", nullable = false, length = 200)
+
     private String tieuDe;
 
-    @Column(name = "tu_ngay", nullable = false)
+
     private LocalDate tuNgay;
 
-    @Column(name = "den_ngay", nullable = false)
+
     private LocalDate denNgay;
 
-    @ManyToOne
-    @JoinColumn(name = "nguoi_lap_id", nullable = false)
+    @DocumentReference
     private NguoiDung nguoiLap;
 
-    @Column(name = "ngay_lap")
+
     private LocalDateTime ngayLap = LocalDateTime.now();
 
-    @Column(name = "noi_dung_json", columnDefinition = "TEXT")
+
     private String noiDungJson;
 
-    @Column(name = "trang_thai", nullable = false)
+
     private String trangThai = "NHAP"; // NHAP, CHO_DUYET, DA_DUYET, TU_CHOI
 
-    @ManyToOne
-    @JoinColumn(name = "nguoi_duyet_id")
+    @DocumentReference
     private NguoiDung nguoiDuyet;
 
-    @Column(name = "ngay_duyet")
+
     private LocalDateTime ngayDuyet;
 
-    @Column(name = "ghi_chu", columnDefinition = "TEXT")
+
     private String ghiChu;
 
     public BaoCao() {}

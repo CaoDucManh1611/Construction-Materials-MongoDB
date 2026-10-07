@@ -1,13 +1,16 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
-<head>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head><link rel="icon" type="image/svg+xml" href="/images/store/favicon.svg">
+<script src="/js/security.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Quản lý hợp đồng - Sài Gòn CMC</title>
   <link rel="stylesheet" href="/css/style.css">
   <script src="/js/custom-alert.js"></script>
+<link rel="stylesheet" href="/css/site.css">
+<script src="/js/ui.js" defer></script>
 </head>
-<body>
+<body class="workspace">
 
 <div th:replace="~{bo_cuc/header :: header}"></div>
 
@@ -170,8 +173,8 @@
       const tr = document.createElement('tr');
       
       let actionHtml = '';
-      if (hd.trangThai === 'NHAP') {
-        actionHtml += '<button class="btn btn-success btn-sm" onclick="activateContract(\'' + hd.maHopDong + '\')">Kích Hoạt</button>';
+      if (hd.trangThai === 'DA_DUYET') {
+        actionHtml += '<button class="btn btn-success btn-sm" onclick="activateContract(\'' + hd.maHopDong + '\')">Ghi nhận ký</button>';
         actionHtml += ' <button class="btn btn-danger btn-sm" onclick="cancelContract(\'' + hd.maHopDong + '\')">Hủy</button>';
       } else {
         actionHtml += '<span style="font-size: 12px; color: var(--text-muted);">Đã chốt</span>';
@@ -196,7 +199,8 @@
 
   function formatContractStatusText(status) {
     switch (status) {
-      case 'NHAP': return 'Bản Nháp';
+      case 'NHAP': return 'Chờ quản lý duyệt';
+      case 'DA_DUYET': return 'Đã duyệt — chờ ký';
       case 'HIEU_LUC': return 'Hiệu Lực';
       case 'DA_HUY': return 'Đã Hủy';
       default: return status;
@@ -213,7 +217,7 @@
   }
 
   function activateContract(maHopDong) {
-    showConfirm('Kích hoạt hiệu lực hợp đồng ' + maHopDong + '?', function() {
+    showConfirm('Xác nhận đã ký hợp đồng ' + maHopDong + '?', function() {
       fetch('/api/sales/contracts/activate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -328,5 +332,6 @@
   });
 </script>
 
+<script src="/js/business.js"></script>
 </body>
 </html>

@@ -1,38 +1,41 @@
 package com.example.ht_vlxd.Model.estimation;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DocumentReference;
+import org.springframework.data.mongodb.core.mapping.Field;
+import org.springframework.data.mongodb.core.mapping.FieldType;
+import org.springframework.data.mongodb.core.index.Indexed;
 import java.math.BigDecimal;
 
-@Entity
-@Table(name = "dinh_muc_vat_lieu", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"loai_cong_trinh", "loai_vat_lieu"})
-})
+@Document(collection = "dinh_muc_vat_lieu")
+@org.springframework.data.mongodb.core.index.CompoundIndex(name = "DinhMucVatLieu_unique", def = "{'loaiCongTrinh':1,'loaiVatLieu':1}", unique = true)
 public class DinhMucVatLieu {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "loai_cong_trinh", nullable = false, length = 100)
+    @Version
+    private Long version;
+
+
     private String loaiCongTrinh;
 
-    @Column(name = "loai_vat_lieu", nullable = false, length = 50)
+
     private String loaiVatLieu;
 
-    @Column(name = "he_so_m2", nullable = false, precision = 12, scale = 4)
+
+    @Field(targetType = FieldType.DECIMAL128)
     private BigDecimal heSoM2;
 
-    @Column(name = "don_vi_tinh", nullable = false, length = 30)
+
     private String donViTinh;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "cach_tinh", nullable = false)
     private CachTinh cachTinh = CachTinh.THEO_TANG;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "kieu_lam_tron", nullable = false)
     private KieuLamTron kieuLamTron = KieuLamTron.DEM;
 
-    @Column(name = "ghi_chu", columnDefinition = "TEXT")
+
     private String ghiChu;
 
     public enum CachTinh {

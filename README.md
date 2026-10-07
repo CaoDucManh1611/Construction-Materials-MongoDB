@@ -1,100 +1,100 @@
-# CMMS - Hệ Thống Quản Lý Cửa Hàng Vật Liệu Xây Dựng Sài Gòn CMC
+# Quản lý cửa hàng vật liệu xây dựng — MongoDB
 
-**Sài Gòn CMC - Construction Materials Management System (CMMS)** là hệ thống quản lý số hóa toàn diện quy trình vận hành, kinh doanh, kho bãi và tài chính dành riêng cho chuỗi cửa hàng cung ứng vật liệu xây dựng. Được xây dựng trên nền tảng **Spring Boot 4** và **Java 26**, dự án giải quyết triệt để các bài toán nghiệp vụ thực tế phức tạp của ngành VLXD mà các hệ thống bán lẻ thông thường không đáp ứng được.
+Ứng dụng Java 21+, Spring Boot 4.0.6, Spring Data MongoDB, Spring Security và Thymeleaf. Thiết kế nghiệp vụ đối chiếu tài liệu phase3; MongoDB là cơ sở dữ liệu chính thức. Không còn cấu hình kết nối MySQL/JPA.
 
----
+## Chạy dự án
 
-## 🛠️ Công Nghệ Sử Dụng (Technologies Used)
+Cần JDK 21 trở lên, Maven hoặc Maven Wrapper và MongoDB replica set. Transaction của các nghiệp vụ tiền và kho **bắt buộc replica set**, kể cả chạy trên một máy.
 
-Dự án ứng dụng các công nghệ hiện đại và chuẩn mực trong phát triển phần mềm doanh nghiệp:
+Nếu có Docker, tại thư mục gốc:
 
-*   **Ngôn ngữ lập trình:** Java 26 (tận dụng các tính năng mới nhất của Java nâng cao hiệu suất).
-*   **Framework cốt lõi:** Spring Boot 4.0.6 (Spring Web, Spring Data JPA, Spring Security 6).
-*   **Cơ sở dữ liệu:** MySQL 8.0+ (sử dụng JPA/Hibernate làm hệ quản trị cơ sở dữ liệu quan hệ, thiết kế chuẩn hóa 3NF).
-*   **Bảo mật:** Spring Security 6 (phân quyền đa nhiệm dựa trên vai trò - RBAC, bảo vệ các endpoint nhạy cảm chống tấn công CSRF).
-*   **Template Engine:** Thymeleaf 3.0 (tích hợp thẻ an ninh `thymeleaf-extras-springsecurity6` để phân quyền trực tiếp trên giao diện người dùng).
-*   **Giao diện & Styling:** CSS thuần chất lượng cao (sử dụng CSS Variables, Flexbox, CSS Grid và hiệu ứng Glassmorphism) đảm bảo Responsive mượt mà trên mọi thiết bị.
-*   **Trí tuệ nhân tạo:** Google Gemini API (sử dụng mô hình **Gemini 2.5 Flash** để tư vấn vật tư, tính toán định mức).
-*   **Quản lý thư viện & Build:** Maven.
-
-## 🚀 Đặc Tả Nghiệp Vụ Thực Tế (Real-World Business Cases)
-
-Dự án này được thiết kế dựa trên các nghiệp vụ thực tế tại các doanh nghiệp cung ứng vật tư xây dựng:
-
-### 1. Quản lý Hợp đồng & Đơn giá Cố định (Project Contracts)
-*   **Vấn đề thực tế:** Giá sắt thép, xi măng biến động theo ngày. Nhà thầu cần đơn giá cố định trong suốt thời gian thi công dự án (6 - 12 tháng).
-*   **Giải pháp:** Hệ thống hỗ trợ lập **Hợp đồng dài hạn** (`HopDong`) quy định đơn giá cố định cho từng loại vật tư. Khi xuất hàng lẻ cho công trình (`DonHang`), hệ thống sẽ tự động áp đơn giá ưu đãi trong hợp đồng thay vì giá bán lẻ ngoài thị trường.
-
-### 2. Kiểm soát Hạn mức Công nợ Chặt chẽ (Credit Limit Enforcement)
-*   **Vấn đề thực tế:** Các nhà thầu thường mua hàng trước trả tiền sau. Nếu không kiểm soát chặt chẽ, dư nợ sẽ vượt quá khả năng chi trả của nhà thầu.
-*   **Giải pháp:** Mỗi khách hàng (`KhachHang`) có một `hanMucNo` riêng. Trước khi duyệt phiếu xuất kho (`PhieuKho`), hệ thống sẽ tính toán: **(Dư nợ hiện tại + Giá trị đơn hàng mới) > Hạn mức nợ**. Nếu vượt quá, hệ thống sẽ tự động khóa đơn hàng và yêu cầu bộ phận Kế toán duyệt thủ công hoặc yêu cầu khách hàng thanh toán bớt nợ trước khi giao hàng.
-
-### 3. Quy trình Xuất Nhập Kho & Đối Soát Hai Chiều (Warehouse Verification)
-*   **Vấn đề thực tế:** Số lượng vật liệu thực tế trong kho và trên giấy tờ dễ lệch nhau do hao hụt tự nhiên hoặc sai sót khi bốc dỡ.
-*   **Giải pháp:** Tách biệt vai trò **Kinh doanh** (Tạo đơn hàng) và **Thủ kho** (Xác nhận xuất kho). Tồn kho thực tế (`TonKho`) chỉ được cộng/trừ khi Thủ kho bấm duyệt **Phiếu kho** (`PhieuKho`) sau khi đã bốc xếp vật tư lên xe tải thực tế.
-
-### 4. Đổi Trả Hàng & Hoàn Khớp Dòng Tiền (Surplus & Defect Management)
-*   **Vấn đề thực tế:** Công trình hoàn thiện thường thừa ra gạch đá hoặc sắt vụn, nhà thầu có nhu cầu trả lại cửa hàng để trừ nợ.
-*   **Giải pháp:** Hệ thống xử lý phiếu đổi trả (`DoiTraHang`), tự động tăng lại tồn kho thực tế, đồng thời hạch toán một bút toán giảm trừ công nợ trực tiếp cho khách hàng một cách minh bạch.
-
-### 5. Bộ Tính Toán Định Mức Vật Tư (Material Estimator Calculator)
-*   Tự động tính toán khối lượng vật liệu cần thiết dựa trên diện tích xây dựng (m²), loại kết cấu (nhà cấp 4, nhà phố, biệt thự) và số tầng.
-*   Áp dụng định mức tiêu chuẩn xây dựng quốc gia (`DinhMucVatLieu`) để quy đổi ra số lượng cát (m³), đá (m³), xi măng (bao), gạch (viên) và sắt (kg) một cách chính xác nhất.
-
----
-
-## 🛠️ Công Nghệ & Kiến Trúc Mã Nguồn
-
-### 1. Công nghệ sử dụng
-*   **Backend:** Spring Boot 4.0.6, Spring Security 6, Spring Data JPA (Hibernate 7)
-*   **Database:** MySQL 8.0+
-*   **UI/UX:** Thymeleaf Engine, CSS Grid & Flexbox, hiệu ứng Glassmorphic hiện đại, Responsive.
-*   **AI Integration:** API Gemini 2.5 Flash thông qua backend Java RestController bảo mật.
-
-### 2. Cấu trúc thư mục chuẩn hóa (Domain Sub-packaging)
-Dự án được sắp xếp cực kỳ khoa học, gom nhóm theo các miền nghiệp vụ chuyên biệt dưới các package phân lớp chính:
-```
-com.example.ht_vlxd
-├── Config                  # Cấu hình hệ thống
-│   ├── auth                # Bảo mật Spring Security
-│   └── common              # Gieo dữ liệu khởi tạo (DatabaseSeeder)
-├── Controller              # Lớp tiếp nhận Request
-│   ├── auth / customer     # Điều hướng tài khoản, khách hàng
-│   ├── inventory / sales   # Quản lý kho, đơn hàng, hợp đồng
-│   ├── finance / estimation# Kế toán công nợ, máy tính vật tư
-│   └── ai                  # API Trợ lý ảo Gemini
-├── DTO                     # Đối tượng chuyển đổi dữ liệu
-├── Model                   # Lớp ánh xạ thực thể JPA (20 Entity chính)
-├── Repository              # Lớp giao tiếp Database (Spring Data JPA)
-└── Service                 # Lớp xử lý Logic nghiệp vụ cốt lõi
+```powershell
+docker compose up -d --wait
+cd ht_vlxd
+$env:MONGODB_URI='mongodb://localhost:27017/vlxd_db?replicaSet=rs0'
+$env:SEED_DEMO='true'
+.\mvnw.cmd spring-boot:run
 ```
 
----
+Mở http://localhost:8080/login. Nếu không có Docker, chạy MongoDB cục bộ với `mongod --replSet rs0 --bind_ip 127.0.0.1 --dbpath <thư-mục-dữ-liệu>` rồi dùng `mongosh` khởi tạo `rs.initiate({_id:'rs0',members:[{_id:0,host:'localhost:27017'}]})`. Không khởi tạo lại replica set đã có.
 
-## 🔑 Tài Khoản Kiểm Thử Nghiệp Vụ (Demo Accounts)
+`SEED_DEMO` mặc định `false`; bật khi tạo database demo mới. Seeder không đặt lại mật khẩu khi khởi động. Tài khoản mẫu dùng mật khẩu `Admin@123`:
 
-Để trải nghiệm toàn bộ luồng nghiệp vụ trên, bạn có thể đăng nhập bằng các tài khoản phân quyền tương ứng dưới đây (mật khẩu mặc định là `Admin@123`):
+| Vai trò | Tài khoản |
+| --- | --- |
+| Quản trị viên | admin |
+| Ban quản lý | giamdoc |
+| Kinh doanh | nvkd01 |
+| Kho | nvkho01 |
+| Kế toán | nvkt01 |
+| Khách hàng | khachhang01 |
 
-*   **Quản trị viên (`admin`):** Quản trị hệ thống, cấp quyền tài khoản.
-*   **Giám đốc (`giamdoc`):** Xem báo cáo tài chính, tổng dư nợ công nợ toàn hệ thống.
-*   **Kinh doanh (`nvkd01`):** Lập hợp đồng dự án, tạo đơn hàng cho khách hàng.
-*   **Thủ kho (`nvkho01`):** Xác nhận xuất kho vật liệu, kiểm tra tồn kho thực tế.
-*   **Kế toán (`nvkt01`):** Duyệt hạn mức nợ, thu tiền thanh toán từ khách hàng.
-*   **Khách hàng (`khachhang01`):** Sử dụng máy tính định mức, chat với Trợ lý AI để tư vấn gạch đá, sắt thép.
+Gemini là tùy chọn qua biến `GEMINI_API_KEY`. Các luồng quản lý không cần API key.
 
----
+## Luồng nghiệp vụ đã triển khai
 
-## ⚙️ Hướng Dẫn Cài Đặt Nhanh
+1. Kinh doanh lập báo giá có chi tiết và thời hạn. Khách hàng chấp nhận báo giá của mình để tạo đơn chờ xác nhận; hoặc gửi đơn từ giỏ hàng.
+2. Kinh doanh xác nhận đơn và lập hợp đồng với giá/số lượng lưu tại thời điểm thỏa thuận. Ban quản lý duyệt, sau đó kinh doanh ghi nhận ký hợp đồng. Giá trị hợp đồng tạo công nợ; tiền cọc đã thu ban đầu bằng 0.
+3. Kế toán thu tiền thực tế với mã giao dịch chống ghi trùng, tạo hóa đơn. Khi đạt cọc đã thỏa thuận mới có lệnh xuất. Cọc 30% trên form là giá trị gợi ý, có thể chỉnh khi lập hợp đồng.
+4. Kho lập phiếu xuất khớp lệnh xuất; quản lý duyệt mới trừ tồn kho. Chỉ lập giao nhận sau khi xuất kho; bàn giao lưu biên bản và hoàn thành đơn, không trừ kho lần nữa.
+5. Nhập kho cần nhà cung cấp, đơn giá và biên bản kiểm đếm/chất lượng. Duyệt phiếu tăng tồn và tạo công nợ phải trả; kế toán chi tiền để giảm công nợ.
+6. Kiểm kê tạo đề xuất điều chỉnh, giữ số lượng sổ sách để phát hiện tồn kho đã thay đổi. Quản lý duyệt trước khi cập nhật tồn.
+7. Đổi/trả phải thuộc đơn của khách, số lượng cộng dồn không vượt lượng mua. Kinh doanh duyệt yêu cầu, kho nhận và phân loại. Hàng hỏng không vào tồn bán. Trả hàng điều chỉnh công nợ theo giá hợp đồng gốc; kế toán ghi phiếu hoàn tiền nếu thực thu vượt giá trị còn lại. Đổi hàng tạo đơn/lệnh giao thay thế, xuất kho và bàn giao riêng.
+8. Thêm/sửa/ngừng hàng hóa và danh mục đi qua đề xuất quản lý duyệt. Báo cáo phòng ban lưu số liệu do server tính, gửi quản lý duyệt và xuất JSON.
 
-1.  **Cấu hình Database:** Cấu hình thông tin kết nối MySQL và khóa **Gemini API Key** tại [application.properties](file:///D:/Construction_materials_management_system-feature-may-tinh-vat-lieu-1/Construction_materials_management_system-feature-may-tinh-vat-lieu-1/ht_vlxd/src/main/resources/application.properties):
-    ```properties
-    spring.datasource.url=jdbc:mysql://localhost:3306/vlxd_db?createDatabaseIfNotExist=true
-    spring.datasource.username=root
-    spring.datasource.password=your_password
-    gemini.api.key=your_gemini_api_key
-    ```
-2.  **Khởi chạy dự án:** Chạy lệnh sau tại thư mục chứa file `pom.xml`:
-    ```powershell
-    .\mvnw.cmd spring-boot:run
-    ```
-3.  **Trải nghiệm:** Truy cập đường dẫn `http://localhost:8080` trên trình duyệt.
+Hủy/ngừng giữ lịch sử và liên kết chứng từ. Hợp đồng đã thu tiền hoặc có lệnh xuất bị chặn hủy trực tiếp. API phân quyền ở server, không tin vai trò/username do trình duyệt gửi; CSRF và khóa sau 5 lần đăng nhập sai được áp dụng. Session đang đăng nhập được kiểm tra lại khi tài khoản bị khóa hoặc đổi quyền.
+
+## Thiết kế dữ liệu
+
+- Collection độc lập: `nguoi_dung`, `role`, `khach_hang`, `nha_cung_cap`, `danh_muc`, `hang_hoa`, `kho`, `ton_kho`, `don_hang`, `hop_dong`, `phieu_kho`, `giao_nhan`, `doi_tra_hang`, `cong_no`, `thanh_toan`, `bao_cao`, `dinh_muc_vat_lieu`.
+- Collection bổ sung: `bang_bao_gia`, `hoa_don`, `lenh_xuat`, `de_xuat_danh_muc`, `sequences`.
+- Chi tiết đơn hàng/phiếu kho nhúng trong chứng từ cha. Hợp đồng, báo giá và lệnh xuất lưu bản chi tiết giá/số lượng; thay đổi giá danh mục không sửa giá chứng từ cũ.
+- Tham chiếu giữa collection dùng ID số nguyên giữ tương thích API. `sequences` cấp ID nguyên tử; `@Version` kiểm soát ghi đồng thời. Mã chứng từ, mã giao dịch và cặp hàng–kho có unique index.
+- Tiền/số lượng dùng `BigDecimal` và MongoDB `Decimal128`. Các thay đổi tiền/kho/chứng từ liên quan nằm trong cùng transaction.
+
+## Dữ liệu MySQL cũ
+
+`Database.sql` là tài liệu lịch sử của source cũ, không dùng để khởi tạo bản MongoDB. Công cụ offline chỉ chuẩn bị file nhập, không kết nối hay ghi đè database:
+
+```powershell
+python scripts/convert_mysql_export.py mysql-export.json --output mongo-import
+python scripts/test_mysql_conversion.py
+```
+
+Đầu vào là JSON dạng `{ "ten_bang": [ { "id": 1, ... } ] }`, cột tên snake_case như source cũ. Đầu ra là MongoDB Extended JSON, giữ ID, Decimal128, tham chiếu, nhúng chi tiết và tạo sequence. Công cụ không đọc trực tiếp file SQL. Đọc `RECONCILE.md` sinh ra và đối soát tiền cọc, công nợ, tồn kho, giá hợp đồng trước khi nhập vào **database mới**. Source cũ có sai nghiệp vụ nên đổi định dạng không tự xác nhận số dư đúng. Chưa thực hiện nhập dữ liệu MySQL thực tế của người dùng.
+
+## Kiểm tra
+
+Các test tích hợp dùng MongoDB riêng; tuyệt đối không trỏ `TEST_MONGODB_URI` vào database sử dụng thật. Ví dụ có replica set test `rs-test` tại cổng 27028:
+
+```powershell
+cd ht_vlxd
+$env:TEST_MONGODB_URI='mongodb://127.0.0.1:27028/vlxd_test_workflows?replicaSet=rs-test'
+.\mvnw.cmd test
+.\mvnw.cmd package -DskipTests
+cd ..
+python scripts/check_javascript.py
+python scripts/test_mysql_conversion.py
+```
+
+Kiểm thử bao gồm phân quyền/CSRF, khóa đăng nhập, thực thu cọc, chống ghi trùng, xuất kho lặp/thiếu hàng, đổi/trả, hoàn tiền, công nợ NCC và duyệt danh mục. Kiểm tra giao diện thực tế bằng Playwright trên database demo riêng.
+
+Với ứng dụng demo đang chạy ở cổng 8088, kiểm tra sáu vai trò và các màn hình quản lý ở kích thước máy tính/điện thoại bằng `playwright-cli run-code --filename=scripts/browser_smoke.js` sau khi mở browser tới trang đăng nhập. Script dùng các tài khoản mẫu nêu trên.
+
+## Phạm vi hiện tại
+
+Một lệnh xuất tương ứng một lần xuất đủ chi tiết; chưa chia giao nhiều đợt từ cùng lệnh. Biên bản sự vụ được lưu trong hệ thống, chưa có dịch vụ gửi thông báo email/SMS. Báo cáo xuất JSON, chưa xuất biểu mẫu PDF. Phần giao diện 3.3 trong tài liệu do chủ dự án chủ động bỏ để bổ sung ảnh sau khi hoàn thiện.
+
+## Giao diện và luồng truy cập
+
+Trang `/` giới thiệu doanh nghiệp trước. Khách xem danh mục, tìm kiếm/lọc/sắp xếp và xem chi tiết vật liệu tại `/san_pham` mà không cần đăng nhập. Giỏ lựa chọn được lưu trên trình duyệt; khi mở giỏ để gửi đơn, khách đăng nhập tại `/login?next=cart`. Đăng nhập thành công chuyển tới khu vực theo vai trò do máy chủ trả về. Giao diện dùng CSS/JavaScript hiện có, phông hệ thống và hình SVG minh họa lưu trong dự án.
+
+Kiểm tra luồng công khai và giỏ hàng trên database demo riêng:
+
+```powershell
+playwright-cli open http://127.0.0.1:8088/ --browser=msedge
+playwright-cli run-code --filename=scripts/storefront_smoke.js
+playwright-cli run-code --filename=scripts/browser_smoke.js
+```
+
+Trang giới thiệu có chuyển động mở đầu, vật liệu nổi, dải chữ chạy, xuất hiện khi cuộn và thẻ nghiêng trên thiết bị có chuột. Nút tạm dừng lưu lựa chọn trên trình duyệt; hệ thống tôn trọng `prefers-reduced-motion`. Các cảnh nhà ở, công trình và xe giao vật liệu là SVG minh họa, không phải ảnh dự án thực tế. Chạy `playwright-cli run-code --filename=scripts/motion_smoke.js` để kiểm tra animation, ảnh, FAQ và bố cục ở 375/768/1440 px.

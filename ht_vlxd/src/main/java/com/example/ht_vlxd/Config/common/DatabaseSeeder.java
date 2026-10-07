@@ -26,6 +26,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Component
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "app.seed-demo", havingValue = "true")
 public class DatabaseSeeder {
 
     private final RoleRepository roleRepository;
@@ -37,7 +38,6 @@ public class DatabaseSeeder {
     private final TonKhoRepository tonKhoRepository;
     private final PasswordEncoder passwordEncoder;
     private final DinhMucVatLieuRepository dinhMucVatLieuRepository;
-    private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     public DatabaseSeeder(RoleRepository roleRepository,
                           NguoiDungRepository nguoiDungRepository,
@@ -47,8 +47,7 @@ public class DatabaseSeeder {
                           HangHoaRepository hangHoaRepository,
                           TonKhoRepository tonKhoRepository,
                           PasswordEncoder passwordEncoder,
-                          DinhMucVatLieuRepository dinhMucVatLieuRepository,
-                          org.springframework.jdbc.core.JdbcTemplate jdbcTemplate) {
+                          DinhMucVatLieuRepository dinhMucVatLieuRepository) {
         this.roleRepository = roleRepository;
         this.nguoiDungRepository = nguoiDungRepository;
         this.khachHangRepository = khachHangRepository;
@@ -58,7 +57,6 @@ public class DatabaseSeeder {
         this.tonKhoRepository = tonKhoRepository;
         this.passwordEncoder = passwordEncoder;
         this.dinhMucVatLieuRepository = dinhMucVatLieuRepository;
-        this.jdbcTemplate = jdbcTemplate;
     }
 
     @EventListener(ApplicationReadyEvent.class)
@@ -68,8 +66,7 @@ public class DatabaseSeeder {
         }
         if (nguoiDungRepository.count() == 0) {
             seedUsers();
-        } else {
-            resetPasswordsToBCrypt();
+
         }
         if (danhMucRepository.count() == 0) {
             seedCategories();
@@ -88,19 +85,7 @@ public class DatabaseSeeder {
         }
         // Always run to fill missing Cat/Da categories & products (idempotent)
         seedMissingCatDaProducts();
-        applyDatabaseConstraints();
-    }
 
-    private void resetPasswordsToBCrypt() {
-        String genericHash = passwordEncoder.encode("Admin@123");
-        String[] usernames = {"admin", "giamdoc", "nvkd01", "nvkho01", "nvkt01", "khachhang01"};
-        for (String uname : usernames) {
-            NguoiDung nd = nguoiDungRepository.findByUsername(uname);
-            if (nd != null) {
-                nd.setPasswordHash(genericHash);
-                nguoiDungRepository.save(nd);
-            }
-        }
     }
 
     private void seedRoles() {
@@ -437,28 +422,4 @@ public class DatabaseSeeder {
         dinhMucVatLieuRepository.save(dm);
     }
 
-    private void applyDatabaseConstraints() {
-        try {
-            jdbcTemplate.execute("ALTER TABLE don_hang MODIFY COLUMN khach_hang_id BIGINT NULL");
-        } catch (Exception e) {
-            System.err.println("Warning: Could not modify khach_hang_id: " + e.getMessage());
-        }
-
-        try {
-            // MySQL does not support 'DROP CONSTRAINT IF EXISTS'. We attempt to drop it,
-            // and ignore the exception if the constraint does not exist yet.
-            jdbcTemplate.execute("ALTER TABLE don_hang DROP CONSTRAINT chk_khachhang_or_vanglai");
-        } catch (Exception e) {
-            // Safe to ignore if it doesn't exist
-        }
-
-        try {
-            jdbcTemplate.execute("ALTER TABLE don_hang ADD CONSTRAINT chk_khachhang_or_vanglai CHECK (" +
-                    "(khach_hang_id IS NOT NULL) OR " +
-                    "(ten_khach_vang_lai IS NOT NULL AND sdt_khach_vang_lai IS NOT NULL)" +
-                    ")");
-        } catch (Exception e) {
-            System.err.println("Warning: Could not apply CHECK constraint (perhaps MySQL version doesn't support it): " + e.getMessage());
-        }
-    }
 }

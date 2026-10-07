@@ -1,13 +1,14 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
-<head>
+<head><link rel="icon" type="image/svg+xml" href="/images/store/favicon.svg">
+<script src="/js/security.js"></script>
   <meta charset="UTF-8">
 </head>
 <body>
 
-<div th:fragment="sidebar" class="sidebar">
+<div th:fragment="sidebar" class="sidebar" id="workspace-sidebar" aria-label="Điều hướng quản lý">
   <!-- 1. KHACH_HANG MENU -->
-  <div class="sidebar-section" id="menu_KHACH_HANG">
+  <div class="sidebar-section" id="menu_KHACH_HANG" th:if="${currentAccount != null and currentAccount.role.name == 'KHACH_HANG'}">
     <div class="sidebar-heading">Khách hàng</div>
     <ul class="sidebar-menu">
       <li class="sidebar-item">
@@ -38,7 +39,7 @@
   </div>
 
   <!-- 2. NV_KINH_DOANH MENU -->
-  <div class="sidebar-section" id="menu_NV_KINH_DOANH">
+  <div class="sidebar-section" id="menu_NV_KINH_DOANH" th:if="${currentAccount != null and currentAccount.role.name == 'NV_KINH_DOANH'}">
     <div class="sidebar-heading">Kinh Doanh</div>
     <ul class="sidebar-menu">
       <li class="sidebar-item">
@@ -69,7 +70,7 @@
   </div>
 
   <!-- 3. NV_KE_TOAN MENU -->
-  <div class="sidebar-section" id="menu_NV_KE_TOAN">
+  <div class="sidebar-section" id="menu_NV_KE_TOAN" th:if="${currentAccount != null and currentAccount.role.name == 'NV_KE_TOAN'}">
     <div class="sidebar-heading">Kế toán</div>
     <ul class="sidebar-menu">
       <li class="sidebar-item">
@@ -100,7 +101,7 @@
   </div>
 
   <!-- 4. BAN_QUAN_LY MENU -->
-  <div class="sidebar-section" id="menu_BAN_QUAN_LY">
+  <div class="sidebar-section" id="menu_BAN_QUAN_LY" th:if="${currentAccount != null and currentAccount.role.name == 'BAN_QUAN_LY'}">
     <div class="sidebar-heading">Ban Quản Lý</div>
     <ul class="sidebar-menu">
       <li class="sidebar-item">
@@ -125,7 +126,7 @@
   </div>
 
   <!-- 5. NV_KHO MENU -->
-  <div class="sidebar-section" id="menu_NV_KHO">
+  <div class="sidebar-section" id="menu_NV_KHO" th:if="${currentAccount != null and currentAccount.role.name == 'NV_KHO'}">
     <div class="sidebar-heading">Kho vận</div>
     <ul class="sidebar-menu">
       <li class="sidebar-item">
@@ -156,7 +157,7 @@
   </div>
 
   <!-- 6. QUAN_TRI_VIEN MENU -->
-  <div class="sidebar-section" id="menu_QUAN_TRI_VIEN">
+  <div class="sidebar-section" id="menu_QUAN_TRI_VIEN" th:if="${currentAccount != null and currentAccount.role.name == 'QUAN_TRI_VIEN'}">
     <div class="sidebar-heading">Quản trị</div>
     <ul class="sidebar-menu">
       <li class="sidebar-item">
@@ -174,53 +175,4 @@
     </ul>
   </div>
 
-  <script th:inline="javascript">
-    function updateSidebarMenu(role) {
-      document.querySelectorAll('.sidebar-section').forEach(el => {
-        el.style.display = 'none';
-      });
-      
-      const activeSection = document.getElementById('menu_' + role);
-      if (activeSection) {
-        activeSection.style.display = 'block';
-      }
-      
-      const currentPath = window.location.pathname;
-      document.querySelectorAll('.sidebar-link').forEach(link => {
-        link.classList.remove('active');
-        if (link.getAttribute('href') === currentPath) {
-          link.classList.add('active');
-        }
-      });
-    }
-
-    function updateSidebarCartBadge() {
-      const stored = localStorage.getItem('shopping_cart');
-      const badge = document.getElementById('sidebarCartBadge');
-      if (badge) {
-        let count = 0;
-        if (stored) {
-          try {
-            const list = JSON.parse(stored);
-            count = list.reduce((sum, item) => sum + Number(item.soLuong), 0);
-          } catch(e) {}
-        }
-        if (count > 0) {
-          badge.innerText = count;
-          badge.style.display = 'inline-block';
-        } else {
-          badge.style.display = 'none';
-        }
-      }
-    }
-
-    document.addEventListener('DOMContentLoaded', function() {
-      let savedRole = localStorage.getItem('demo_role') || 'KHACH_HANG';
-      updateSidebarMenu(savedRole);
-      updateSidebarCartBadge();
-    });
-  </script>
-</div>
-
-</body>
-</html>
+</div></body></html>

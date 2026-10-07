@@ -1,40 +1,47 @@
 package com.example.ht_vlxd.Model.sales;
 import com.example.ht_vlxd.Model.product.HangHoa;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DocumentReference;
+import org.springframework.data.mongodb.core.mapping.Field;
+import org.springframework.data.mongodb.core.mapping.FieldType;
+import org.springframework.data.mongodb.core.index.Indexed;
 import java.math.BigDecimal;
 
-@Entity
-@Table(name = "don_hang_chi_tiet")
+
 public class DonHangChiTiet {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "don_hang_id", nullable = false)
+
+    @org.springframework.data.annotation.Transient
     private DonHang donHang;
 
-    @ManyToOne
-    @JoinColumn(name = "hang_hoa_id", nullable = false)
+    @DocumentReference
     private HangHoa hangHoa;
 
-    @Column(name = "so_luong", nullable = false, precision = 18, scale = 3)
+
+    @Field(targetType = FieldType.DECIMAL128)
     private BigDecimal soLuong;
 
-    @Column(name = "don_gia", nullable = false, precision = 18, scale = 2)
+
+    @Field(targetType = FieldType.DECIMAL128)
     private BigDecimal donGia;
 
-    @Column(name = "thanh_tien", nullable = false, precision = 18, scale = 2)
+
+    @Field(targetType = FieldType.DECIMAL128)
     private BigDecimal thanhTien;
 
-    @Column(name = "ghi_chu", columnDefinition = "TEXT")
+
     private String ghiChu;
 
     public DonHangChiTiet() {}
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+    @com.fasterxml.jackson.annotation.JsonIgnore
     public DonHang getDonHang() { return donHang; }
     public void setDonHang(DonHang donHang) { this.donHang = donHang; }
     public HangHoa getHangHoa() { return hangHoa; }

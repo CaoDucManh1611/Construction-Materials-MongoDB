@@ -31,6 +31,11 @@ import java.util.*;
 @RestController
 @RequestMapping("/api/accounting")
 public class AccountingRestController {
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.example.ht_vlxd.Service.sales.BusinessWorkflowService workflow;
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.example.ht_vlxd.Service.auth.CurrentUser currentUser;
+
 
     private final CongNoRepository congNoRepository;
     private final ThanhToanRepository thanhToanRepository;
@@ -77,6 +82,7 @@ public class AccountingRestController {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
         for (CongNo cn : congNos) {
+            if (!"PHAI_THU".equals(cn.getLoaiCongNo())) continue;
             Map<String, Object> map = new HashMap<>();
             map.put("id", cn.getId());
             map.put("khachHangId", cn.getKhachHang() != null ? cn.getKhachHang().getId() : null);
@@ -88,6 +94,7 @@ public class AccountingRestController {
             map.put("maHopDong", cn.getHopDong() != null ? cn.getHopDong().getMaHopDong() : "");
             map.put("soTienNo", cn.getSoTienNo());
             map.put("soTienDaTt", cn.getSoTienDaTt());
+            map.put("soTienHoanTra", cn.getSoTienHoanTra());
             BigDecimal conLai = cn.getSoTienNo().subtract(cn.getSoTienDaTt());
             map.put("soTienConLai", conLai.max(BigDecimal.ZERO));
             map.put("hanThanhToan", cn.getHanThanhToan() != null ? cn.getHanThanhToan().format(formatter) : "");
@@ -109,15 +116,16 @@ public class AccountingRestController {
         BigDecimal tongPhatThu = BigDecimal.ZERO;
         BigDecimal tongDaThu = BigDecimal.ZERO;
         BigDecimal tongConNo = BigDecimal.ZERO;
-        int soKhachConNo = 0;
+        java.util.Set<Long> khachConNo = new java.util.HashSet<>();
 
         for (CongNo cn : congNos) {
+            if (!"PHAI_THU".equals(cn.getLoaiCongNo())) continue;
             tongPhatThu = tongPhatThu.add(cn.getSoTienNo());
             tongDaThu = tongDaThu.add(cn.getSoTienDaTt());
             BigDecimal conLai = cn.getSoTienNo().subtract(cn.getSoTienDaTt()).max(BigDecimal.ZERO);
             tongConNo = tongConNo.add(conLai);
             if (conLai.compareTo(BigDecimal.ZERO) > 0) {
-                soKhachConNo++;
+                if (cn.getKhachHang() != null) khachConNo.add(cn.getKhachHang().getId());
             }
         }
 
@@ -126,7 +134,8 @@ public class AccountingRestController {
         BigDecimal tongDoanhThu = BigDecimal.ZERO;
         long tongDonHang = 0;
         for (DonHang dh : donHangs) {
-            if ("HOAN_THANH".equals(dh.getTrangThai()) || "DA_XAC_NHAN".equals(dh.getTrangThai())) {
+            if (!"HOAN_THANH".equals(dh.getTrangThai())) continue;
+            if ("HOAN_THANH".equals(dh.getTrangThai())) {
                 tongDoanhThu = tongDoanhThu.add(dh.getTongTien() != null ? dh.getTongTien() : BigDecimal.ZERO);
                 tongDonHang++;
             }
@@ -136,14 +145,14 @@ public class AccountingRestController {
         List<ThanhToan> thanhToans = thanhToanRepository.findAll();
         BigDecimal tongThuThucTe = BigDecimal.ZERO;
         for (ThanhToan tt : thanhToans) {
-            tongThuThucTe = tongThuThucTe.add(tt.getSoTien());
+            if ("THU".equals(tt.getLoaiPhieu())) tongThuThucTe = tongThuThucTe.add(tt.getSoTien());
         }
 
         Map<String, Object> result = new HashMap<>();
         result.put("tongPhatThu", tongPhatThu);
         result.put("tongDaThu", tongDaThu);
         result.put("tongConNo", tongConNo);
-        result.put("soKhachConNo", soKhachConNo);
+        result.put("soKhachConNo", khachConNo.size());
         result.put("tongDoanhThu", tongDoanhThu);
         result.put("tongDonHang", tongDonHang);
         result.put("tongThuThucTe", tongThuThucTe);
@@ -156,58 +165,12 @@ public class AccountingRestController {
     // THU TIỀN KHÁCH HÀNG (Ghi nhận thanh toán công nợ)
     // ====================================================
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/debts/collect")
     public ResponseEntity<?> collectPayment(@RequestBody Map<String, Object> body) {
-        Long congNoId = Long.valueOf(body.get("congNoId").toString());
-        BigDecimal soTien = new BigDecimal(body.get("soTien").toString());
-        String hinhThuc = (String) body.get("hinhThuc");
-        String maGiaoDich = (String) body.getOrDefault("maGiaoDich", "");
-        String ghiChu = (String) body.getOrDefault("ghiChu", "");
-        String username = (String) body.getOrDefault("username", "");
-
-        CongNo cn = congNoRepository.findById(congNoId).orElse(null);
-        if (cn == null) {
-            return ResponseEntity.badRequest().body("Không tìm thấy công nợ.");
-        }
-
-        BigDecimal conLai = cn.getSoTienNo().subtract(cn.getSoTienDaTt()).max(BigDecimal.ZERO);
-        if (soTien.compareTo(conLai) > 0) {
-            soTien = conLai; // Cap to remaining amount
-        }
-
-        // Tạo phiếu thanh toán
-        ThanhToan tt = new ThanhToan();
-        tt.setMaThanhToan("PT-" + System.currentTimeMillis());
-        tt.setCongNo(cn);
-        NguoiDung nguoiThu = nguoiDungService.findByUsername(username);
-        if (nguoiThu == null && !nguoiDungRepository.findAll().isEmpty()) {
-            nguoiThu = nguoiDungRepository.findAll().get(0);
-        }
-        tt.setNguoiThu(nguoiThu);
-        tt.setSoTien(soTien);
-        tt.setHinhThuc(hinhThuc != null ? hinhThuc : "CHUYEN_KHOAN");
-        tt.setMaGiaoDich(maGiaoDich);
-        tt.setGhiChu(ghiChu);
-        tt.setNgayThanhToan(LocalDateTime.now());
-        thanhToanRepository.save(tt);
-
-        // Cập nhật công nợ
-        BigDecimal newDaTt = cn.getSoTienDaTt().add(soTien);
-        cn.setSoTienDaTt(newDaTt);
-        BigDecimal newConLai = cn.getSoTienNo().subtract(newDaTt).max(BigDecimal.ZERO);
-        if (newConLai.compareTo(BigDecimal.ZERO) == 0) {
-            cn.setTrangThai("DA_THANH_TOAN");
-        } else {
-            cn.setTrangThai("CHUA_THANH_TOAN");
-        }
-        congNoRepository.save(cn);
-
-        return ResponseEntity.ok(Map.of(
-            "message", "Thu tiền thành công! Mã phiếu: " + tt.getMaThanhToan(),
-            "maThanhToan", tt.getMaThanhToan(),
-            "soTienThu", soTien,
-            "conLai", newConLai
-        ));
+        return ResponseEntity.ok(workflow.collect(Long.valueOf(body.get("congNoId").toString()),
+            new BigDecimal(body.get("soTien").toString()), (String) body.getOrDefault("hinhThuc", "CHUYEN_KHOAN"),
+            (String) body.getOrDefault("maGiaoDich", ""), (String) body.getOrDefault("ghiChu", "")));
     }
 
     // ====================================================
@@ -221,6 +184,7 @@ public class AccountingRestController {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
         for (ThanhToan tt : thanhToans) {
+            if (!"THU".equals(tt.getLoaiPhieu())) continue;
             Map<String, Object> map = new HashMap<>();
             map.put("id", tt.getId());
             map.put("maThanhToan", tt.getMaThanhToan());
@@ -286,6 +250,7 @@ public class AccountingRestController {
         BigDecimal tongConNo = BigDecimal.ZERO;
 
         for (DonHang dh : donHangs) {
+            if (!"HOAN_THANH".equals(dh.getTrangThai())) continue;
             if (dh.getNgayDat() == null) continue;
             LocalDate ngayDat = dh.getNgayDat().toLocalDate();
             if (from != null && ngayDat.isBefore(from)) continue;
@@ -350,6 +315,7 @@ public class AccountingRestController {
         LocalDate to = denNgay != null && !denNgay.isEmpty() ? LocalDate.parse(denNgay, inputFormatter) : null;
 
         BigDecimal tongThu = BigDecimal.ZERO;
+        BigDecimal tongChi = BigDecimal.ZERO;
         int soPhieu = 0;
 
         for (ThanhToan tt : thanhToans) {
@@ -360,7 +326,7 @@ public class AccountingRestController {
 
             Map<String, Object> row = new HashMap<>();
             row.put("maThanhToan", tt.getMaThanhToan());
-            row.put("loaiPhieu", "THU");
+            row.put("loaiPhieu", "THU".equals(tt.getLoaiPhieu()) ? "THU" : "CHI");
             row.put("nguoiGiaoDich", tt.getCongNo() != null && tt.getCongNo().getKhachHang() != null
                     && tt.getCongNo().getKhachHang().getNguoiDung() != null
                     ? tt.getCongNo().getKhachHang().getNguoiDung().getHoTen() : "");
@@ -371,15 +337,16 @@ public class AccountingRestController {
             row.put("ghiChu", tt.getGhiChu() != null ? tt.getGhiChu() : "");
             row.put("nguoiThu", tt.getNguoiThu() != null ? tt.getNguoiThu().getHoTen() : "");
             rows.add(row);
-            tongThu = tongThu.add(tt.getSoTien());
+            if ("THU".equals(tt.getLoaiPhieu())) tongThu = tongThu.add(tt.getSoTien());
+            else tongChi = tongChi.add(tt.getSoTien());
             soPhieu++;
         }
 
         Map<String, Object> result = new HashMap<>();
         result.put("rows", rows);
         result.put("tongThu", tongThu);
-        result.put("tongChi", BigDecimal.ZERO); // supplier payments not tracked in this system yet
-        result.put("luuChuyen", tongThu);
+        result.put("tongChi", tongChi); // supplier payments not tracked in this system yet
+        result.put("luuChuyen", tongThu.subtract(tongChi));
         result.put("soPhieuThu", soPhieu);
         return ResponseEntity.ok(result);
     }
@@ -421,13 +388,14 @@ public class AccountingRestController {
     // LƯU BÁO CÁO
     // ====================================================
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/reports/save")
     public ResponseEntity<?> saveReport(@RequestBody Map<String, Object> body) {
         String loai = (String) body.get("loai");
         String tieuDe = (String) body.get("tieuDe");
         String tuNgayStr = (String) body.get("tuNgay");
         String denNgayStr = (String) body.get("denNgay");
-        String username = (String) body.getOrDefault("username", "");
+        String username = currentUser.username();
         String ghiChu = (String) body.getOrDefault("ghiChu", "");
 
         NguoiDung nguoiLap = nguoiDungService.findByUsername(username);
@@ -436,12 +404,12 @@ public class AccountingRestController {
         }
 
         BaoCao bc = new BaoCao();
-        bc.setLoai(loai != null ? loai : "TAI_CHINH");
+        bc.setLoai("TAI_CHINH");
         bc.setTieuDe(tieuDe != null ? tieuDe : "Báo cáo tài chính");
         bc.setNguoiLap(nguoiLap);
         bc.setNgayLap(LocalDateTime.now());
         bc.setGhiChu(ghiChu);
-        bc.setTrangThai("DA_DUYET");
+        bc.setTrangThai("CHO_DUYET");
 
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         if (tuNgayStr != null && !tuNgayStr.isEmpty()) {
@@ -455,6 +423,13 @@ public class AccountingRestController {
             bc.setDenNgay(LocalDate.now());
         }
 
+        workflow.require(!bc.getDenNgay().isBefore(bc.getTuNgay()), "Kỳ báo cáo không hợp lệ.");
+        Object snapshot = switch ((String) body.getOrDefault("reportKind", "revenue")) {
+            case "cashflow" -> getCashflowReport(bc.getTuNgay().toString(), bc.getDenNgay().toString()).getBody();
+            case "debt" -> getDebtSummaryReport().getBody();
+            default -> getRevenueReport(bc.getTuNgay().toString(), bc.getDenNgay().toString()).getBody();
+        };
+        bc.setNoiDungJson(new tools.jackson.databind.ObjectMapper().writeValueAsString(snapshot));
         BaoCao saved = baoCaoRepository.save(bc);
         return ResponseEntity.ok(Map.of("message", "Lưu báo cáo thành công!", "id", saved.getId()));
     }
@@ -463,6 +438,7 @@ public class AccountingRestController {
     // DANH SÁCH HỢP ĐỒNG (kế toán xem)
     // ====================================================
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/suppliers")
     public ResponseEntity<?> addSupplier(@RequestBody Map<String, Object> body) {
         String maNcc = (String) body.get("maNcc");

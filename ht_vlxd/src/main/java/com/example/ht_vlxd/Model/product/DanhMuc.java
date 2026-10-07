@@ -1,25 +1,34 @@
 package com.example.ht_vlxd.Model.product;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DocumentReference;
+import org.springframework.data.mongodb.core.mapping.Field;
+import org.springframework.data.mongodb.core.mapping.FieldType;
+import org.springframework.data.mongodb.core.index.Indexed;
 
-@Entity
-@Table(name = "danh_muc")
+@Document(collection = "danh_muc")
 public class DanhMuc {
+    private boolean hoatDong = true;
+    public boolean getHoatDong() { return hoatDong; }
+    public void setHoatDong(boolean value) { hoatDong = value; }
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "ma_danh_muc", nullable = false, unique = true, length = 20)
+    @Version
+    private Long version;
+
+    @Indexed(unique = true, sparse = true)
     private String maDanhMuc;
 
-    @Column(name = "ten", nullable = false, length = 150)
+
     private String ten;
 
-    @Column(name = "mo_ta", columnDefinition = "TEXT")
+
     private String moTa;
 
-    @ManyToOne
-    @JoinColumn(name = "parent_id")
+    @DocumentReference
     private DanhMuc parent;
 
     public DanhMuc() {}

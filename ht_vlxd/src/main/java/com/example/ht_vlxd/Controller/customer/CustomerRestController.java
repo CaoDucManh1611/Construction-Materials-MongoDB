@@ -30,6 +30,11 @@ import java.util.*;
 @RestController
 @RequestMapping("/api/khach_hang")
 public class CustomerRestController {
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.example.ht_vlxd.Service.sales.BusinessWorkflowService workflow;
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.example.ht_vlxd.Service.auth.CurrentUser currentUser;
+
 
     private final org.springframework.security.web.context.SecurityContextRepository securityContextRepository = new org.springframework.security.web.context.DelegatingSecurityContextRepository(
             new org.springframework.security.web.context.RequestAttributeSecurityContextRepository(),
@@ -75,7 +80,8 @@ public class CustomerRestController {
     }
 
     @GetMapping("/profile")
-    public ResponseEntity<?> getProfile(@RequestParam String username) {
+    public ResponseEntity<?> getProfile(@RequestParam(required = false) String username) {
+        username = currentUser.username();
         NguoiDung nd = nguoiDungService.findByUsername(username);
         if (nd == null) {
             // Also fall back to phone number search or name search
@@ -119,6 +125,7 @@ public class CustomerRestController {
         return ResponseEntity.ok(data);
     }
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody Map<String, String> body) {
         String username = body.get("username");
@@ -136,6 +143,8 @@ public class CustomerRestController {
             return ResponseEntity.badRequest().body("Lỗi hệ thống: Không tìm thấy vai trò KHACH_HANG.");
         }
 
+        workflow.require(username != null && !username.isBlank() && fullname != null && !fullname.isBlank(), "Tên đăng nhập và họ tên không được trống.");
+        workflow.require(password != null && password.length() >= 8, "Mật khẩu cần ít nhất 8 ký tự.");
         NguoiDung nd = new NguoiDung();
         nd.setUsername(username);
         nd.setPasswordHash(passwordEncoder.encode(password));
@@ -148,7 +157,7 @@ public class CustomerRestController {
 
         KhachHang kh = new KhachHang();
         kh.setNguoiDung(savedNd);
-        kh.setMaKhachHang("KH-" + System.currentTimeMillis() % 10000);
+        kh.setMaKhachHang(workflow.code("KH"));
         kh.setLoaiKhach("CA_NHAN");
         kh.setHanMucNo(BigDecimal.ZERO);
         kh.setNguoiDaiDien(fullname);
@@ -187,10 +196,11 @@ public class CustomerRestController {
         } catch (Exception e) {
             // Ignore BCrypt check warnings
         }
+
         if (!matches) {
-            matches = password.equals(nd.getPasswordHash());
-        }
-        if (!matches) {
+            nd.setSoLanDangNhapSai(nd.getSoLanDangNhapSai() + 1);
+            if (nd.getSoLanDangNhapSai() >= 5) nd.setTrangThai("BI_KHOA");
+            nguoiDungService.save(nd);
             return ResponseEntity.badRequest().body("Tên đăng nhập hoặc mật khẩu không chính xác.");
         }
 
@@ -200,6 +210,11 @@ public class CustomerRestController {
         if ("CHO_DUYET".equals(nd.getTrangThai())) {
             return ResponseEntity.badRequest().body("Tài khoản của bạn đang chờ quản trị viên phê duyệt.");
         }
+
+        nd.setSoLanDangNhapSai(0);
+        nguoiDungService.save(nd);
+        request.getSession(true);
+        request.changeSessionId();
 
         // Establish Spring Security Context
         List<org.springframework.security.core.GrantedAuthority> authorities =
@@ -222,9 +237,10 @@ public class CustomerRestController {
         return ResponseEntity.ok(respMap);
     }
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/profile/update")
     public ResponseEntity<?> updateProfile(@RequestBody Map<String, String> body) {
-        String username = body.get("username");
+        String username = currentUser.username();
         NguoiDung nd = nguoiDungService.findByUsername(username);
         if (nd == null) {
             return ResponseEntity.badRequest().body("Không tìm thấy tài khoản người dùng: " + username);
@@ -240,7 +256,7 @@ public class CustomerRestController {
         if (kh == null) {
             kh = new KhachHang();
             kh.setNguoiDung(nd);
-            kh.setMaKhachHang("KH-" + System.currentTimeMillis() % 10000);
+            kh.setMaKhachHang(workflow.code("KH"));
             kh.setLoaiKhach("CA_NHAN");
         }
         kh.setTenCongTy(body.get("tenCongTy"));
@@ -251,9 +267,10 @@ public class CustomerRestController {
         return ResponseEntity.ok("Cập nhật thông tin thành công!");
     }
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/change-password")
     public ResponseEntity<?> changePassword(@RequestBody Map<String, String> body) {
-        String username = body.get("username");
+        String username = currentUser.username();
         String currentPassword = body.get("currentPassword");
         String newPassword = body.get("newPassword");
 
@@ -268,20 +285,20 @@ public class CustomerRestController {
         } catch (Exception e) {
             // Ignore BCrypt check warnings
         }
-        if (!currentMatches) {
-            currentMatches = currentPassword.equals(nd.getPasswordHash());
-        }
+
         if (!currentMatches) {
             return ResponseEntity.badRequest().body("Mật khẩu hiện tại không chính xác.");
         }
 
+        workflow.require(newPassword != null && newPassword.length() >= 8, "Mật khẩu mới cần ít nhất 8 ký tự.");
         nd.setPasswordHash(passwordEncoder.encode(newPassword));
         nguoiDungService.save(nd);
         return ResponseEntity.ok("Đổi mật khẩu thành công!");
     }
 
     @GetMapping("/orders")
-    public ResponseEntity<?> getOrders(@RequestParam String username) {
+    public ResponseEntity<?> getOrders(@RequestParam(required = false) String username) {
+        username = currentUser.username();
         KhachHang kh = khachHangRepository.findByNguoiDungUsername(username);
         if (kh == null) {
             return ResponseEntity.ok(Collections.emptyList());
@@ -319,9 +336,10 @@ public class CustomerRestController {
         return ResponseEntity.ok(response);
     }
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/orders/create")
     public ResponseEntity<?> createOrder(@RequestBody Map<String, Object> body) {
-        String username = (String) body.get("username");
+        String username = currentUser.username();
         KhachHang kh = khachHangRepository.findByNguoiDungUsername(username);
         if (kh == null) {
             return ResponseEntity.badRequest().body("Chỉ tài khoản khách hàng mới được phép đặt hàng.");
@@ -329,24 +347,24 @@ public class CustomerRestController {
 
         Long productId = Long.valueOf(body.get("productId").toString());
         BigDecimal soLuong = new BigDecimal(body.get("soLuong").toString());
+        workflow.positive(soLuong, "Số lượng");
         String diaChiGiao = (String) body.get("diaChiGiao");
         String ghiChu = (String) body.get("ghiChu");
 
         HangHoa hh = hangHoaService.findById(productId);
-        if (hh == null) {
+        if (hh == null || hh.getTrangThai() != com.example.ht_vlxd.Model.product.TrangThaiHangHoa.KINH_DOANH) {
             return ResponseEntity.badRequest().body("Không tìm thấy hàng hóa.");
         }
 
         BigDecimal donGia = hh.getGiaBanLe();
         BigDecimal tongTien = donGia.multiply(soLuong);
-        BigDecimal tienDatCoc = tongTien.multiply(new BigDecimal("0.30")); // 30% deposit
 
         DonHang dh = new DonHang();
         dh.setKhachHang(kh);
         dh.setMaDonHang("DH-" + System.currentTimeMillis());
         dh.setDiaChiGiao(diaChiGiao);
         dh.setTongTien(tongTien);
-        dh.setTienDatCoc(tienDatCoc);
+        dh.setTienDatCoc(BigDecimal.ZERO);
         dh.setTrangThai("CHO_XAC_NHAN");
         dh.setGhiChu(ghiChu);
         dh.setNgayDat(LocalDateTime.now());
@@ -364,28 +382,20 @@ public class CustomerRestController {
         return ResponseEntity.ok("Đặt hàng thành công với mã đơn: " + savedDh.getMaDonHang());
     }
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/orders/cancel")
     public ResponseEntity<?> cancelOrder(@RequestBody Map<String, Object> body) {
-        String maDonHang = (String) body.get("maDonHang");
-        DonHang dh = donHangService.findByMaDonHang(maDonHang);
-        if (dh == null) {
-            return ResponseEntity.badRequest().body("Không tìm thấy đơn hàng.");
-        }
-
-        if (!"CHO_XAC_NHAN".equals(dh.getTrangThai())) {
-            return ResponseEntity.badRequest().body("Chỉ đơn hàng ở trạng thái 'Chờ xác nhận' mới được phép hủy.");
-        }
-
-        dh.setTrangThai("DA_HUY");
-        donHangService.save(dh);
-        return ResponseEntity.ok("Đã hủy đơn hàng thành công!");
+        workflow.cancelOrder((String) body.get("maDonHang"), true);
+        return ResponseEntity.ok(java.util.Map.of("message", "Đã hủy đơn hàng."));
     }
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/orders/return")
     public ResponseEntity<?> requestReturn(@RequestBody Map<String, Object> body) {
         String maDonHang = (String) body.get("maDonHang");
         String maHang = (String) body.get("maHang");
         BigDecimal soLuong = new BigDecimal(body.get("soLuong").toString());
+        workflow.positive(soLuong, "Số lượng");
         String lyDo = (String) body.get("lyDo");
         String loai = (String) body.get("loai"); // DOI, TRA
 
@@ -399,10 +409,12 @@ public class CustomerRestController {
                 .findFirst()
                 .orElse(null);
 
-        if (hh == null) {
+        if (hh == null || hh.getTrangThai() != com.example.ht_vlxd.Model.product.TrangThaiHangHoa.KINH_DOANH) {
             return ResponseEntity.badRequest().body("Không tìm thấy sản phẩm trong hệ thống.");
         }
 
+        workflow.validateReturn(dh, hh, soLuong, loai);
+        workflow.require(lyDo != null && !lyDo.isBlank(), "Phải ghi lý do đổi trả.");
         DoiTraHang dth = new DoiTraHang();
         dth.setDonHang(dh);
         dth.setKhachHang(dh.getKhachHang());
@@ -419,7 +431,8 @@ public class CustomerRestController {
     }
 
     @GetMapping("/returns")
-    public ResponseEntity<?> getReturns(@RequestParam String username) {
+    public ResponseEntity<?> getReturns(@RequestParam(required = false) String username) {
+        username = currentUser.username();
         NguoiDung nd = nguoiDungService.findByUsername(username);
         if (nd == null) {
             nd = nguoiDungService.findBySoDienThoai(username);
@@ -461,9 +474,10 @@ public class CustomerRestController {
         return ResponseEntity.ok(response);
     }
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/orders/create-cart")
     public ResponseEntity<?> createCartOrder(@RequestBody Map<String, Object> body) {
-        String username = (String) body.get("username");
+        String username = currentUser.username();
         NguoiDung nd = nguoiDungService.findByUsername(username);
         if (nd == null) {
             nd = nguoiDungService.findBySoDienThoai(username);
@@ -496,9 +510,10 @@ public class CustomerRestController {
         for (Map<String, Object> item : items) {
             Long productId = Long.valueOf(item.get("productId").toString());
             BigDecimal soLuong = new BigDecimal(item.get("soLuong").toString());
+        workflow.positive(soLuong, "Số lượng");
 
             HangHoa hh = hangHoaService.findById(productId);
-            if (hh == null) {
+            if (hh == null || hh.getTrangThai() != com.example.ht_vlxd.Model.product.TrangThaiHangHoa.KINH_DOANH) {
                 return ResponseEntity.badRequest().body("Không tìm thấy hàng hóa với ID: " + productId);
             }
 
@@ -515,18 +530,17 @@ public class CustomerRestController {
             detailList.add(ct);
         }
 
-        BigDecimal tienDatCoc = tongTien.multiply(new BigDecimal("0.30")); // 30% deposit
 
         DonHang dh = new DonHang();
         dh.setKhachHang(kh);
         dh.setMaDonHang("DH-" + System.currentTimeMillis());
         dh.setDiaChiGiao(diaChiGiao);
         dh.setTongTien(tongTien);
-        dh.setTienDatCoc(tienDatCoc);
+        dh.setTienDatCoc(BigDecimal.ZERO);
         dh.setTrangThai("CHO_XAC_NHAN");
         dh.setGhiChu(ghiChu);
         dh.setNgayDat(LocalDateTime.now());
-        
+
         DonHang savedDh = donHangService.save(dh);
 
         for (DonHangChiTiet ct : detailList) {

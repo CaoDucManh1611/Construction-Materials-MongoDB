@@ -1,48 +1,54 @@
 package com.example.ht_vlxd.Model.supplier;
 import com.example.ht_vlxd.Model.auth.NguoiDung;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DocumentReference;
+import org.springframework.data.mongodb.core.mapping.Field;
+import org.springframework.data.mongodb.core.mapping.FieldType;
+import org.springframework.data.mongodb.core.index.Indexed;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "nha_cung_cap")
+@Document(collection = "nha_cung_cap")
 public class NhaCungCap {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne
-    @JoinColumn(name = "nguoi_dung_id", unique = true)
+    @Version
+    private Long version;
+
+    @DocumentReference
     private NguoiDung nguoiDung;
 
-    @Column(name = "ma_ncc", nullable = false, unique = true, length = 20)
+    @Indexed(unique = true, sparse = true)
     private String maNcc;
 
-    @Column(name = "ten_ncc", nullable = false, length = 200)
+
     private String tenNcc;
 
-    @Column(name = "ma_so_thue", length = 20)
+
     private String maSoThue;
 
-    @Column(name = "dia_chi", columnDefinition = "TEXT")
+
     private String diaChi;
 
-    @Column(name = "email", length = 150)
+
     private String email;
 
-    @Column(name = "so_dien_thoai", length = 20)
+
     private String soDienThoai;
 
-    @Column(name = "nguoi_lien_he", length = 150)
+
     private String nguoiLienHe;
 
-    @Column(name = "trang_thai", nullable = false)
+
     private String trangThai = "HOAT_DONG";
 
-    @Column(name = "ghi_chu", columnDefinition = "TEXT")
+
     private String ghiChu;
 
-    @Column(name = "ngay_tao")
+
     private LocalDateTime ngayTao = LocalDateTime.now();
 
     public NhaCungCap() {}

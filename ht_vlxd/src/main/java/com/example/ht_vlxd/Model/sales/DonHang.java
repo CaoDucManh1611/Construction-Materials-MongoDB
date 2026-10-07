@@ -2,56 +2,73 @@ package com.example.ht_vlxd.Model.sales;
 import com.example.ht_vlxd.Model.customer.KhachHang;
 import com.example.ht_vlxd.Model.auth.NguoiDung;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DocumentReference;
+import org.springframework.data.mongodb.core.mapping.Field;
+import org.springframework.data.mongodb.core.mapping.FieldType;
+import org.springframework.data.mongodb.core.index.Indexed;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "don_hang")
+@Document(collection = "don_hang")
 public class DonHang {
+    private Long doiTraId;
+    public Long getDoiTraId() { return doiTraId; }
+    public void setDoiTraId(Long value) { doiTraId = value; }
+    private Long baoGiaId;
+    public Long getBaoGiaId() { return baoGiaId; }
+    public void setBaoGiaId(Long value) { baoGiaId = value; }
+    private java.util.List<DonHangChiTiet> chiTiet = new java.util.ArrayList<>();
+    public java.util.List<DonHangChiTiet> getChiTiet() { return chiTiet; }
+    public void setChiTiet(java.util.List<DonHangChiTiet> chiTiet) { this.chiTiet = chiTiet; }
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "ma_don_hang", nullable = false, unique = true, length = 30)
+    @Version
+    private Long version;
+
+    @Indexed(unique = true, sparse = true)
     private String maDonHang;
 
-    @ManyToOne
-    @JoinColumn(name = "khach_hang_id", nullable = true)
+    @DocumentReference
     private KhachHang khachHang;
 
-    @Column(name = "ten_khach_vang_lai", length = 150)
+
     private String tenKhachVangLai;
 
-    @Column(name = "sdt_khach_vang_lai", length = 20)
+
     private String sdtKhachVangLai;
 
-    @ManyToOne
-    @JoinColumn(name = "nv_kinh_doanh_id")
+    @DocumentReference
     private NguoiDung nvKinhDoanh;
 
-    @Column(name = "ngay_dat", nullable = false)
+
     private LocalDateTime ngayDat = LocalDateTime.now();
 
-    @Column(name = "ngay_giao_du_kien")
+
     private LocalDateTime ngayGiaoDuKien;
 
-    @Column(name = "dia_chi_giao", columnDefinition = "TEXT")
+
     private String diaChiGiao;
 
-    @Column(name = "tong_tien", nullable = false)
+
+    @Field(targetType = FieldType.DECIMAL128)
     private BigDecimal tongTien = BigDecimal.ZERO;
 
-    @Column(name = "tien_dat_coc")
+
+    @Field(targetType = FieldType.DECIMAL128)
     private BigDecimal tienDatCoc = BigDecimal.ZERO;
 
-    @Column(name = "trang_thai", nullable = false)
+
     private String trangThai = "CHO_XAC_NHAN";
 
-    @Column(name = "ghi_chu", columnDefinition = "TEXT")
+
     private String ghiChu;
 
-    @Column(name = "ngay_cap_nhat")
+
     private LocalDateTime ngayCapNhat = LocalDateTime.now();
 
     public DonHang() {}

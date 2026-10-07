@@ -51,6 +51,7 @@ public class MaterialEstimationRestController {
     @Autowired
     private NguoiDungRepository nguoiDungRepository;
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/tinh-toan")
     public ResponseEntity<?> calculate(@RequestBody CalculationRequest request) {
         if (request.getDienTich() == null || request.getDienTich() <= 0
@@ -81,6 +82,7 @@ public class MaterialEstimationRestController {
         }
     }
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/dat-hang-nhap")
     public ResponseEntity<?> createDraftOrder(@RequestBody Map<String, Object> body) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -131,11 +133,11 @@ public class MaterialEstimationRestController {
         BigDecimal total = BigDecimal.ZERO;
         for (Map<String, Object> item : chiTiet) {
             Long hhId = Long.valueOf(item.get("hangHoaId").toString());
-            BigDecimal soLuong = new BigDecimal(item.get("soLuong").toString());
+            BigDecimal soLuong = com.example.ht_vlxd.Service.sales.BusinessWorkflowService.positive(new BigDecimal(item.get("soLuong").toString()), "Số lượng");
 
             HangHoa hh = hangHoaRepository.findById(hhId).orElse(null);
             if (hh == null || hh.getTrangThai() == TrangThaiHangHoa.NGUNG_KINH_DOANH) {
-                return ResponseEntity.badRequest().body(new ErrorResponse("Sản phẩm ID " + hhId + " không hợp lệ hoặc đã ngừng kinh doanh."));
+                throw new IllegalArgumentException("Sản phẩm không hợp lệ hoặc đã ngừng kinh doanh.");
             }
 
             boolean useGiaSi = false;
@@ -156,7 +158,7 @@ public class MaterialEstimationRestController {
         }
 
         dh.setTongTien(total);
-        dh.setTienDatCoc(total.multiply(new BigDecimal("0.30")));
+        dh.setTienDatCoc(BigDecimal.ZERO);
         donHangService.save(dh);
 
         Map<String, Object> resp = new HashMap<>();

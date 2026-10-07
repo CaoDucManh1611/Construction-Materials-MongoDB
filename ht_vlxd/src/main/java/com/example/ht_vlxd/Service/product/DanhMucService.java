@@ -15,7 +15,7 @@ public class DanhMucService {
     }
 
     public List<DanhMuc> getAll() {
-        return danhMucRepository.findAll();
+        return danhMucRepository.findAll().stream().filter(DanhMuc::getHoatDong).toList();
     }
 
     public DanhMuc findByMaDanhMuc(String maDanhMuc) {
@@ -27,6 +27,7 @@ public class DanhMucService {
     }
 
     public void delete(Long id) {
-        danhMucRepository.deleteById(id);
+        var category = danhMucRepository.findById(id).orElseThrow();
+        category.setHoatDong(false); danhMucRepository.save(category);
     }
 }

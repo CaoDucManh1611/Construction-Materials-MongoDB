@@ -1,52 +1,59 @@
 package com.example.ht_vlxd.Model.product;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DocumentReference;
+import org.springframework.data.mongodb.core.mapping.Field;
+import org.springframework.data.mongodb.core.mapping.FieldType;
+import org.springframework.data.mongodb.core.index.Indexed;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "hang_hoa")
+@Document(collection = "hang_hoa")
 public class HangHoa {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "ma_hang", nullable = false, unique = true, length = 30)
+    @Version
+    private Long version;
+
+    @Indexed(unique = true, sparse = true)
     private String maHang;
 
-    @Column(name = "ten_hang", nullable = false, length = 200)
+
     private String tenHang;
 
-    @ManyToOne
-    @JoinColumn(name = "danh_muc_id")
+    @DocumentReference
     private DanhMuc danhMuc;
 
-    @Column(name = "don_vi_tinh", nullable = false, length = 30)
+
     private String donViTinh;
 
-    @Column(name = "quy_cach", length = 200)
+
     private String quyCach;
 
-    @Column(name = "gia_ban_le", nullable = false)
+
+    @Field(targetType = FieldType.DECIMAL128)
     private BigDecimal giaBanLe = BigDecimal.ZERO;
 
-    @Column(name = "gia_ban_si")
+
+    @Field(targetType = FieldType.DECIMAL128)
     private BigDecimal giaBanSi;
 
-    @Column(name = "trong_luong_kg")
+
+    @Field(targetType = FieldType.DECIMAL128)
     private BigDecimal trongLuongKg;
 
-    @Column(name = "anh_url", length = 500)
+
     private String anhUrl;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "trang_thai", nullable = false)
     private TrangThaiHangHoa trangThai = TrangThaiHangHoa.KINH_DOANH;
 
-    @Column(name = "ghi_chu", columnDefinition = "TEXT")
+
     private String ghiChu;
 
-    @Column(name = "ngay_tao")
+
     private LocalDateTime ngayTao = LocalDateTime.now();
 
     public HangHoa() {}

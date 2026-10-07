@@ -1,29 +1,37 @@
 package com.example.ht_vlxd.Model.inventory;
 import com.example.ht_vlxd.Model.product.HangHoa;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DocumentReference;
+import org.springframework.data.mongodb.core.mapping.Field;
+import org.springframework.data.mongodb.core.mapping.FieldType;
+import org.springframework.data.mongodb.core.index.Indexed;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "ton_kho", uniqueConstraints = {@UniqueConstraint(columnNames = {"hang_hoa_id", "kho_id"})})
+@Document(collection = "ton_kho")
+@org.springframework.data.mongodb.core.index.CompoundIndex(name = "TonKho_unique", def = "{'hangHoa':1,'kho':1}", unique = true)
 public class TonKho {
+    public void setNgayCapNhat(LocalDateTime value) { this.ngayCapNhat = value; }
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "hang_hoa_id", nullable = false)
+    @Version
+    private Long version;
+
+    @DocumentReference
     private HangHoa hangHoa;
 
-    @ManyToOne
-    @JoinColumn(name = "kho_id", nullable = false)
+    @DocumentReference
     private Kho kho;
 
-    @Column(name = "so_luong", nullable = false)
+
+    @Field(targetType = FieldType.DECIMAL128)
     private BigDecimal soLuong = BigDecimal.ZERO;
 
-    @Column(name = "ngay_cap_nhat")
+
     private LocalDateTime ngayCapNhat = LocalDateTime.now();
 
     public TonKho() {}

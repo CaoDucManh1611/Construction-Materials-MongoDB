@@ -1,6 +1,7 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
-<head>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head><link rel="icon" type="image/svg+xml" href="/images/store/favicon.svg">
+<script src="/js/security.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard tổng quan - Sài Gòn CMC</title>
@@ -31,8 +32,10 @@
       border-radius: 4px;
     }
   </style>
+<link rel="stylesheet" href="/css/site.css">
+<script src="/js/ui.js" defer></script>
 </head>
-<body>
+<body class="workspace">
 
 <div th:replace="~{bo_cuc/header :: header}"></div>
 
@@ -182,8 +185,8 @@
               const dh = data[i];
               html += `
                 <tr>
-                  <td style="font-weight: 600;">${dh.maDonHang}</td>
-                  <td>${dh.khachHangTen}</td>
+                  <td style="font-weight: 600;">${escapeHtml(dh.maDonHang)}</td>
+                  <td>${escapeHtml(dh.khachHangTen)}</td>
                   <td>${dh.ngayDat}</td>
                   <td class="text-right" style="font-weight: 600;">${formatVND(dh.tongTien)}</td>
                   <td><span class="badge ${getStatusBadgeClass(dh.trangThai)}">${getStatusName(dh.trangThai)}</span></td>
@@ -218,7 +221,7 @@
                 `;
               } else if (item.type === 'CONTRACT') {
                 actionButtons = `
-                  <button class="btn btn-success btn-sm" onclick="approveContract('${item.targetKey}')">Kích Hoạt</button>
+                  <button class="btn btn-success btn-sm" onclick="approveContract('${item.targetKey}')">Duyệt hợp đồng</button>
                 `;
               } else if (item.type === 'REPORT') {
                 actionButtons = `
@@ -233,8 +236,8 @@
               html += `
                 <div class="approval-item" id="approval-item-${item.type}-${item.id}">
                   <div style="flex: 1; padding-right: 12px;">
-                    <div style="font-size: 13px; font-weight: 600;">${item.title}</div>
-                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">${item.description}</div>
+                    <div style="font-size: 13px; font-weight: 600;">${escapeHtml(item.title)}</div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">${escapeHtml(item.description)}</div>
                   </div>
                   <div class="flex-gap-8" style="flex-shrink: 0;">
                     ${actionButtons}
@@ -251,7 +254,7 @@
 
       // Approval Actions API Calls
       function approveContract(maHopDong) {
-        showConfirm(`Xác nhận kích hoạt hợp đồng ${maHopDong}?`, async function() {
+        showConfirm(`Xác nhận duyệt hợp đồng ${maHopDong}?`, async function() {
           try {
             const res = await fetch('/api/management/contracts/approve', {
               method: 'POST',
@@ -259,7 +262,7 @@
               body: JSON.stringify({ maHopDong })
             });
             if (res.ok) {
-              alert(`Hợp đồng ${maHopDong} đã hoạt động!`);
+              alert(`Hợp đồng ${maHopDong} đã duyệt, chờ ghi nhận ký!`);
               refreshData();
             } else {
               alert('Có lỗi xảy ra khi duyệt hợp đồng.');
@@ -279,7 +282,7 @@
               body: JSON.stringify({ maDoiTra })
             });
             if (res.ok) {
-              alert(`Yêu cầu đổi trả ${maDoiTra} đã được thông qua và điều chỉnh công nợ!`);
+              alert(`Yêu cầu đổi trả ${maDoiTra} đã được duyệt; kho cần thu hồi và kiểm tra!`);
               refreshData();
             } else {
               alert('Có lỗi xảy ra khi duyệt yêu cầu.');
@@ -349,6 +352,7 @@
             alert('Lỗi kết nối server.');
           }
         });
+      }
       function refreshData() {
         loadSummary();
         loadOrders();
@@ -362,5 +366,6 @@
   </div>
 </div>
 
+<script src="/js/business.js"></script>
 </body>
 </html>

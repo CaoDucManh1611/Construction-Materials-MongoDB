@@ -15,7 +15,7 @@ public class HangHoaService {
     }
 
     public List<HangHoa> getAllProducts() {
-        return hangHoaRepository.findAll();
+        return hangHoaRepository.findAll().stream().filter(h -> h.getTrangThai() == com.example.ht_vlxd.Model.product.TrangThaiHangHoa.KINH_DOANH).toList();
     }
 
     public HangHoa findByMaHang(String maHang) {
@@ -31,6 +31,8 @@ public class HangHoaService {
     }
 
     public void deleteProduct(Long id) {
-        hangHoaRepository.deleteById(id);
+        var product = hangHoaRepository.findById(id).orElseThrow();
+        product.setTrangThai(com.example.ht_vlxd.Model.product.TrangThaiHangHoa.NGUNG_KINH_DOANH);
+        hangHoaRepository.save(product);
     }
 }

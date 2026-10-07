@@ -1,41 +1,52 @@
 package com.example.ht_vlxd.Model.finance;
 import com.example.ht_vlxd.Model.auth.NguoiDung;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DocumentReference;
+import org.springframework.data.mongodb.core.mapping.Field;
+import org.springframework.data.mongodb.core.mapping.FieldType;
+import org.springframework.data.mongodb.core.index.Indexed;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "thanh_toan")
+@Document(collection = "thanh_toan")
 public class ThanhToan {
+    private String loaiPhieu = "THU";
+    public String getLoaiPhieu() { return loaiPhieu; }
+    public void setLoaiPhieu(String value) { this.loaiPhieu = value; }
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "ma_thanh_toan", nullable = false, unique = true, length = 30)
+    @Version
+    private Long version;
+
+    @Indexed(unique = true, sparse = true)
     private String maThanhToan;
 
-    @ManyToOne
-    @JoinColumn(name = "cong_no_id", nullable = false)
+    @DocumentReference
     private CongNo congNo;
 
-    @ManyToOne
-    @JoinColumn(name = "nguoi_thu_id", nullable = false)
+    @DocumentReference
     private NguoiDung nguoiThu;
 
-    @Column(name = "so_tien", nullable = false, precision = 18, scale = 2)
+
+    @Field(targetType = FieldType.DECIMAL128)
     private BigDecimal soTien;
 
-    @Column(name = "hinh_thuc", nullable = false)
+
     private String hinhThuc; // TIEN_MAT, CHUYEN_KHOAN, THE
 
-    @Column(name = "ngay_thanh_toan", nullable = false)
+
     private LocalDateTime ngayThanhToan = LocalDateTime.now();
 
-    @Column(name = "ma_giao_dich", length = 100)
+
+    @Indexed(unique = true, sparse = true)
     private String maGiaoDich;
 
-    @Column(name = "ghi_chu", columnDefinition = "TEXT")
+
     private String ghiChu;
 
     public ThanhToan() {}

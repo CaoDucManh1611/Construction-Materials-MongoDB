@@ -38,6 +38,11 @@ import java.util.*;
 @RestController
 @RequestMapping("/api/sales")
 public class SalesRestController {
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.example.ht_vlxd.Service.sales.BusinessWorkflowService workflow;
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.example.ht_vlxd.Service.auth.CurrentUser currentUser;
+
 
     private final DonHangRepository donHangRepository;
     private final DonHangChiTietRepository donHangChiTietRepository;
@@ -98,7 +103,7 @@ public class SalesRestController {
             Map<String, Object> map = new HashMap<>();
             map.put("id", dh.getId());
             map.put("maDonHang", dh.getMaDonHang());
-            map.put("khachHangTen", dh.getKhachHang() != null && dh.getKhachHang().getNguoiDung() != null ? 
+            map.put("khachHangTen", dh.getKhachHang() != null && dh.getKhachHang().getNguoiDung() != null ?
                     dh.getKhachHang().getNguoiDung().getHoTen() : "Khách vãng lai");
             map.put("khachHangLoai", dh.getKhachHang() != null ? dh.getKhachHang().getLoaiKhach() : "");
             map.put("ngayDat", dh.getNgayDat() != null ? dh.getNgayDat().format(formatter) : "");
@@ -126,66 +131,25 @@ public class SalesRestController {
         return ResponseEntity.ok(response);
     }
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/orders/approve")
     public ResponseEntity<?> approveOrder(@RequestBody Map<String, String> body) {
-        String maDonHang = body.get("maDonHang");
-        DonHang dh = donHangService.findByMaDonHang(maDonHang);
-        if (dh == null) {
-            return ResponseEntity.badRequest().body("Không tìm thấy đơn hàng.");
-        }
-        dh.setTrangThai("DA_XAC_NHAN");
-        dh.setNgayCapNhat(LocalDateTime.now());
-        donHangRepository.save(dh);
-        return ResponseEntity.ok("Đã duyệt đơn hàng thành công!");
+        workflow.approveOrder(body.get("maDonHang"));
+        return ResponseEntity.ok(java.util.Map.of("message", "Đã xác nhận đơn hàng."));
     }
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/orders/cancel")
     public ResponseEntity<?> cancelOrder(@RequestBody Map<String, String> body) {
-        String maDonHang = body.get("maDonHang");
-        DonHang dh = donHangService.findByMaDonHang(maDonHang);
-        if (dh == null) {
-            return ResponseEntity.badRequest().body("Không tìm thấy đơn hàng.");
-        }
-        dh.setTrangThai("DA_HUY");
-        dh.setNgayCapNhat(LocalDateTime.now());
-        donHangRepository.save(dh);
-        return ResponseEntity.ok("Đơn hàng đã được từ chối/hủy bỏ.");
+        workflow.cancelOrder(body.get("maDonHang"), false);
+        return ResponseEntity.ok(java.util.Map.of("message", "Đã hủy đơn hàng."));
     }
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/orders/complete")
     public ResponseEntity<?> completeOrder(@RequestBody Map<String, String> body) {
-        String maDonHang = body.get("maDonHang");
-        DonHang dh = donHangService.findByMaDonHang(maDonHang);
-        if (dh == null) {
-            return ResponseEntity.badRequest().body("Không tìm thấy đơn hàng.");
-        }
-        dh.setTrangThai("HOAN_THANH");
-        dh.setNgayCapNhat(LocalDateTime.now());
-        donHangRepository.save(dh);
-
-        // Record outstanding debt (CongNo) if not exists
-        List<CongNo> cnList = congNoRepository.findByKhachHangId(dh.getKhachHang().getId());
-        boolean hasCongNo = false;
-        for (CongNo cn : cnList) {
-            if (cn.getDonHang() != null && cn.getDonHang().getId().equals(dh.getId())) {
-                hasCongNo = true;
-                break;
-            }
-        }
-        if (!hasCongNo) {
-            CongNo cn = new CongNo();
-            cn.setKhachHang(dh.getKhachHang());
-            cn.setDonHang(dh);
-            cn.setNgayPhatSinh(LocalDateTime.now());
-            cn.setHanThanhToan(LocalDate.now().plusDays(30));
-            BigDecimal debtAmount = dh.getTongTien().subtract(dh.getTienDatCoc() != null ? dh.getTienDatCoc() : BigDecimal.ZERO);
-            cn.setSoTienNo(debtAmount);
-            cn.setSoTienDaTt(BigDecimal.ZERO);
-            cn.setTrangThai("CHUA_THANH_TOAN");
-            congNoRepository.save(cn);
-        }
-
-        return ResponseEntity.ok("Đơn hàng đã được bàn giao và hoàn thành!");
+        workflow.completeOrder(body.get("maDonHang"));
+        return ResponseEntity.ok(java.util.Map.of("message", "Đơn đã có bàn giao thành công."));
     }
 
     @GetMapping("/customers")
@@ -203,6 +167,7 @@ public class SalesRestController {
         return ResponseEntity.ok(response);
     }
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/orders/create")
     public ResponseEntity<?> createOrder(@RequestBody Map<String, Object> body) {
         Long customerId = Long.valueOf(body.get("customerId").toString());
@@ -210,7 +175,7 @@ public class SalesRestController {
         BigDecimal soLuong = new BigDecimal(body.get("soLuong").toString());
         String diaChiGiao = (String) body.get("diaChiGiao");
         String ghiChu = (String) body.get("ghiChu");
-        String username = (String) body.get("username"); // salesperson username
+        String username = currentUser.username(); // salesperson username
 
         KhachHang kh = khachHangRepository.findById(customerId).orElse(null);
         if (kh == null) {
@@ -218,15 +183,15 @@ public class SalesRestController {
         }
 
         HangHoa hh = hangHoaService.findById(productId);
-        if (hh == null) {
+        if (hh == null || hh.getTrangThai() != com.example.ht_vlxd.Model.product.TrangThaiHangHoa.KINH_DOANH) {
             return ResponseEntity.badRequest().body("Sản phẩm không hợp lệ.");
         }
 
         NguoiDung nvKinhDoanh = nguoiDungService.findByUsername(username);
 
         BigDecimal donGia = hh.getGiaBanLe();
+        com.example.ht_vlxd.Service.sales.BusinessWorkflowService.positive(soLuong, "Số lượng");
         BigDecimal tongTien = donGia.multiply(soLuong);
-        BigDecimal tienDatCoc = tongTien.multiply(new BigDecimal("0.30"));
 
         DonHang dh = new DonHang();
         dh.setKhachHang(kh);
@@ -234,11 +199,11 @@ public class SalesRestController {
         dh.setMaDonHang("DH-" + System.currentTimeMillis());
         dh.setDiaChiGiao(diaChiGiao);
         dh.setTongTien(tongTien);
-        dh.setTienDatCoc(tienDatCoc);
+        dh.setTienDatCoc(BigDecimal.ZERO);
         dh.setTrangThai("DA_XAC_NHAN"); // salesperson orders are auto-approved
         dh.setGhiChu(ghiChu);
         dh.setNgayDat(LocalDateTime.now());
-        
+
         DonHang savedDh = donHangRepository.save(dh);
 
         DonHangChiTiet ct = new DonHangChiTiet();
@@ -264,7 +229,7 @@ public class SalesRestController {
             map.put("id", dth.getId());
             map.put("maDoiTra", dth.getMaDoiTra());
             map.put("maDonHang", dth.getDonHang() != null ? dth.getDonHang().getMaDonHang() : "");
-            map.put("khachHangTen", dth.getKhachHang() != null && dth.getKhachHang().getNguoiDung() != null ? 
+            map.put("khachHangTen", dth.getKhachHang() != null && dth.getKhachHang().getNguoiDung() != null ?
                     dth.getKhachHang().getNguoiDung().getHoTen() : "");
             map.put("tenHang", dth.getHangHoa() != null ? dth.getHangHoa().getTenHang() : "");
             map.put("maHang", dth.getHangHoa() != null ? dth.getHangHoa().getMaHang() : "");
@@ -280,94 +245,18 @@ public class SalesRestController {
         return ResponseEntity.ok(response);
     }
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/returns/approve")
     public ResponseEntity<?> approveReturn(@RequestBody Map<String, String> body) {
-        String maDoiTra = body.get("maDoiTra");
-        String note = body.get("note");
-
-        DoiTraHang dth = doiTraHangRepository.findByMaDoiTra(maDoiTra);
-        if (dth == null) {
-            return ResponseEntity.badRequest().body("Không tìm thấy yêu cầu đổi trả.");
-        }
-
-        dth.setTrangThai("DA_DUYET");
-        dth.setNgayXuLy(LocalDateTime.now());
-        dth.setGhiChuXuLy(note != null ? note : "Đã phê duyệt đổi trả.");
-        doiTraHangRepository.save(dth);
-
-        // Giảm trừ công nợ nếu hình thức là TRẢ HÀNG
-        if ("TRA".equals(dth.getLoai())) {
-            List<CongNo> cnList = congNoRepository.findByKhachHangId(dth.getKhachHang().getId());
-            for (CongNo cn : cnList) {
-                if (cn.getDonHang() != null && cn.getDonHang().getId().equals(dth.getDonHang().getId())) {
-                    BigDecimal returnVal = dth.getSoLuong().multiply(dth.getHangHoa().getGiaBanLe());
-                    BigDecimal currentNo = cn.getSoTienNo();
-                    cn.setSoTienNo(currentNo.subtract(returnVal));
-                    if (cn.getSoTienNo().compareTo(cn.getSoTienDaTt()) <= 0) {
-                        cn.setTrangThai("DA_THANH_TOAN");
-                    }
-                    congNoRepository.save(cn);
-                }
-            }
-
-            // Cộng trả lại kho (khi hoàn trả thì tăng số lượng lên)
-            if (dth.getDonHang() != null) {
-                Kho targetKho = null;
-                List<PhieuKho> slips = phieuKhoRepository.findAll();
-                for (PhieuKho pk : slips) {
-                    if ("XUAT".equals(pk.getLoaiPhieu()) && pk.getDonHang() != null && pk.getDonHang().getId().equals(dth.getDonHang().getId())) {
-                        targetKho = pk.getKho();
-                        break;
-                    }
-                }
-                if (targetKho == null) {
-                    List<Kho> khos = khoRepository.findAll();
-                    if (!khos.isEmpty()) targetKho = khos.get(0);
-                }
-
-                if (targetKho != null) {
-                    final Kho finalKho = targetKho;
-                    Optional<TonKho> optTk = tonKhoRepository.findAll().stream()
-                            .filter(tk -> tk.getHangHoa().getId().equals(dth.getHangHoa().getId()) && tk.getKho().getId().equals(finalKho.getId()))
-                            .findFirst();
-
-                    TonKho tk;
-                    if (optTk.isPresent()) {
-                        tk = optTk.get();
-                    } else {
-                        tk = new TonKho();
-                        tk.setHangHoa(dth.getHangHoa());
-                        tk.setKho(finalKho);
-                        tk.setSoLuong(BigDecimal.ZERO);
-                    }
-
-                    BigDecimal currentQty = tk.getSoLuong() != null ? tk.getSoLuong() : BigDecimal.ZERO;
-                    BigDecimal returnQty = dth.getSoLuong() != null ? dth.getSoLuong() : BigDecimal.ZERO;
-                    tk.setSoLuong(currentQty.add(returnQty));
-                    tonKhoRepository.save(tk);
-                }
-            }
-        }
-
-        return ResponseEntity.ok("Phê duyệt yêu cầu đổi trả thành công!");
+        workflow.approveReturn(body.get("maDoiTra"), true);
+        return ResponseEntity.ok(java.util.Map.of("message", "Đã duyệt; kho cần kiểm tra và thu hồi trước khi quyết toán."));
     }
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/returns/reject")
     public ResponseEntity<?> rejectReturn(@RequestBody Map<String, String> body) {
-        String maDoiTra = body.get("maDoiTra");
-        String note = body.get("note");
-
-        DoiTraHang dth = doiTraHangRepository.findByMaDoiTra(maDoiTra);
-        if (dth == null) {
-            return ResponseEntity.badRequest().body("Không tìm thấy yêu cầu đổi trả.");
-        }
-
-        dth.setTrangThai("TU_CHOI");
-        dth.setNgayXuLy(LocalDateTime.now());
-        dth.setGhiChuXuLy(note != null ? note : "Từ chối yêu cầu đổi trả.");
-        doiTraHangRepository.save(dth);
-
-        return ResponseEntity.ok("Đã từ chối yêu cầu đổi trả.");
+        workflow.approveReturn(body.get("maDoiTra"), false);
+        return ResponseEntity.ok(java.util.Map.of("message", "Đã từ chối yêu cầu."));
     }
 
     @GetMapping("/contracts")
@@ -381,7 +270,7 @@ public class SalesRestController {
             map.put("id", hd.getId());
             map.put("maHopDong", hd.getMaHopDong());
             map.put("maDonHang", hd.getDonHang() != null ? hd.getDonHang().getMaDonHang() : "Không có");
-            map.put("khachHangTen", hd.getKhachHang() != null && hd.getKhachHang().getNguoiDung() != null ? 
+            map.put("khachHangTen", hd.getKhachHang() != null && hd.getKhachHang().getNguoiDung() != null ?
                     hd.getKhachHang().getNguoiDung().getHoTen() : "");
             map.put("ngayKy", hd.getNgayKy() != null ? hd.getNgayKy().format(dateFormatter) : "");
             map.put("ngayHieuLuc", hd.getNgayHieuLuc() != null ? hd.getNgayHieuLuc().format(dateFormatter) : "");
@@ -397,9 +286,9 @@ public class SalesRestController {
     public ResponseEntity<?> getApprovedOrdersNoContract() {
         // Lấy tất cả đơn hàng đã duyệt
         List<DonHang> approvedOrders = donHangRepository.findAll().stream()
-                .filter(dh -> "DA_XAC_NHAN".equals(dh.getTrangThai()))
+                .filter(dh -> "DA_XAC_NHAN".equals(dh.getTrangThai()) && dh.getDoiTraId() == null)
                 .toList();
-        
+
         List<Map<String, Object>> response = new ArrayList<>();
         for (DonHang dh : approvedOrders) {
             // Kiểm tra xem đơn hàng đã có hợp đồng chưa
@@ -417,6 +306,7 @@ public class SalesRestController {
         return ResponseEntity.ok(response);
     }
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/contracts/create")
     public ResponseEntity<?> createContract(@RequestBody Map<String, Object> body) {
         Long orderId = Long.valueOf(body.get("orderId").toString());
@@ -425,13 +315,16 @@ public class SalesRestController {
         BigDecimal chietKhauPercent = new BigDecimal(body.get("chietKhau").toString());
         BigDecimal inputTienCoc = new BigDecimal(body.get("tienDatCoc").toString());
         String dieuKhoan = (String) body.get("dieuKhoan");
-        String username = (String) body.get("username"); // salesperson username
+        String username = currentUser.username(); // salesperson username
 
         DonHang dh = donHangRepository.findById(orderId).orElse(null);
         if (dh == null) {
             return ResponseEntity.badRequest().body("Đơn hàng liên kết không tồn tại.");
         }
 
+        workflow.require("DA_XAC_NHAN".equals(dh.getTrangThai()) && dh.getKhachHang() != null && dh.getDoiTraId() == null, "Cần đơn mua đã xác nhận và hồ sơ khách hàng.");
+        workflow.require(hopDongRepository.findByDonHangId(dh.getId()) == null, "Đơn đã có hợp đồng.");
+        workflow.require(chietKhauPercent.signum() >= 0 && chietKhauPercent.compareTo(new BigDecimal("100")) < 0, "Chiết khấu phải từ 0 đến dưới 100%.");
         NguoiDung nvLap = nguoiDungService.findByUsername(username);
 
         HopDong hd = new HopDong();
@@ -439,14 +332,21 @@ public class SalesRestController {
         hd.setDonHang(dh);
         hd.setKhachHang(dh.getKhachHang());
         hd.setNvLap(nvLap);
-        hd.setNgayKy(LocalDate.parse(ngayKyStr));
+        hd.setNgayKy(null);
         hd.setNgayHieuLuc(LocalDate.parse(ngayHieuLucStr));
-        
+
         // Giá trị hợp đồng tính toán bao gồm chiết khấu
         BigDecimal discountFactor = BigDecimal.ONE.subtract(chietKhauPercent.divide(new BigDecimal("100")));
         BigDecimal contractValue = dh.getTongTien().multiply(discountFactor);
         hd.setGiaTri(contractValue);
-        
+
+        workflow.require(inputTienCoc.signum() >= 0 && inputTienCoc.compareTo(contractValue) <= 0, "Tiền cọc yêu cầu phải nằm trong giá trị hợp đồng.");
+        java.util.List<DonHangChiTiet> agreed = new java.util.ArrayList<>();
+        for (var line : donHangChiTietRepository.findByDonHangId(dh.getId())) {
+            var copy = new DonHangChiTiet(); copy.setHangHoa(line.getHangHoa()); copy.setSoLuong(line.getSoLuong());
+            copy.setDonGia(line.getDonGia().multiply(discountFactor)); copy.setThanhTien(copy.getDonGia().multiply(copy.getSoLuong())); agreed.add(copy);
+        }
+        hd.setChiTiet(agreed);
         hd.setTienDatCoc(inputTienCoc);
         hd.setDieuKhoanTt(dieuKhoan);
         hd.setTrangThai("NHAP"); // Initial status draft
@@ -455,27 +355,17 @@ public class SalesRestController {
         return ResponseEntity.ok("Soạn thảo hợp đồng thành công với mã: " + hd.getMaHopDong());
     }
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/contracts/activate")
     public ResponseEntity<?> activateContract(@RequestBody Map<String, String> body) {
-        String maHopDong = body.get("maHopDong");
-        HopDong hd = hopDongRepository.findByMaHopDong(maHopDong);
-        if (hd == null) {
-            return ResponseEntity.badRequest().body("Không tìm thấy hợp đồng.");
-        }
-        hd.setTrangThai("HIEU_LUC");
-        hopDongRepository.save(hd);
-        return ResponseEntity.ok("Kích hoạt hợp đồng thành công!");
+        workflow.signContract(body.get("maHopDong"));
+        return ResponseEntity.ok(java.util.Map.of("message", "Đã ghi nhận ký hợp đồng."));
     }
 
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/contracts/cancel")
     public ResponseEntity<?> cancelContract(@RequestBody Map<String, String> body) {
-        String maHopDong = body.get("maHopDong");
-        HopDong hd = hopDongRepository.findByMaHopDong(maHopDong);
-        if (hd == null) {
-            return ResponseEntity.badRequest().body("Không tìm thấy hợp đồng.");
-        }
-        hd.setTrangThai("DA_HUY");
-        hopDongRepository.save(hd);
-        return ResponseEntity.ok("Hủy hợp đồng thành công!");
+        workflow.cancelContract(body.get("maHopDong"));
+        return ResponseEntity.ok(java.util.Map.of("message", "Đã hủy hợp đồng và giữ lịch sử."));
     }
 }

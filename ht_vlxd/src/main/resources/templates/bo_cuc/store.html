@@ -1,0 +1,23 @@
+<!DOCTYPE html><html lang="vi" xmlns:th="http://www.thymeleaf.org"><body>
+<div th:fragment="header">
+  <a href="#main" class="skip-link">Đến nội dung chính</a>
+  <div class="announcement">SÀI GÒN CMC · Vật liệu cho nền móng vững chắc</div>
+  <header class="store-header"><div class="container store-nav">
+    <a href="/" class="wordmark" aria-label="Sài Gòn CMC — Trang chủ"><span class="brand-mark">CMC</span><span><strong>Sài Gòn CMC</strong><small>MATERIALS &amp; SUPPLY</small></span></a>
+    <nav id="store-links" class="store-links" aria-label="Điều hướng chính"><a href="/#gioi-thieu">Giới thiệu</a><a href="/san_pham">Vật liệu</a><a href="/#dich-vu">Dịch vụ</a><a href="/#quy-trinh">Quy trình</a></nav>
+    <div class="store-actions"><a class="cart-link" th:href="${currentAccount != null && currentAccount.role.name == 'KHACH_HANG' ? '/khach_hang/gio_hang' : '/login?next=cart'}" aria-label="Giỏ hàng"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 3h2l3 12h10l3-9H6M9 20h.01M18 20h.01" stroke-linecap="round"/></svg><span>Giỏ hàng</span><span class="cart-count" data-cart-count>0</span></a>
+    <a th:if="${currentAccount == null}" href="/login" class="btn btn-primary">Đăng nhập ↗</a><a th:if="${currentAccount != null}" th:href="${workspaceUrl}" class="btn btn-primary">Tài khoản ↗</a>
+    <button class="nav-toggle" type="button" data-store-toggle aria-controls="store-links" aria-expanded="false" aria-label="Mở menu điều hướng">☰</button></div>
+  </div></header>
+</div>
+<footer th:fragment="footer" class="store-footer"><div class="container"><div class="footer-grid">
+  <div><a href="/" class="wordmark"><span class="brand-mark">CMC</span><span><strong>Sài Gòn CMC</strong><small>MATERIALS &amp; SUPPLY</small></span></a><p>Đồng hành cùng khách hàng và nhà thầu trong việc lựa chọn vật liệu, lập báo giá và cung ứng cho công trình.</p></div>
+  <div><h3>Khám phá</h3><a href="/#gioi-thieu">Về Sài Gòn CMC</a><a href="/san_pham">Danh mục vật liệu</a><a href="/#dich-vu">Dịch vụ cung ứng</a><a href="/#quy-trinh">Quy trình mua hàng</a></div>
+  <div><h3>Dành cho khách hàng</h3><a href="/login">Đăng nhập tài khoản</a><a href="/register">Đăng ký khách hàng</a><a th:href="${currentAccount != null ? workspaceUrl : '/login'}">Theo dõi đơn &amp; báo giá</a></div>
+  </div><div class="footer-bottom"><span>© 2026 Sài Gòn CMC. Vật liệu xây dựng.</span><span>Rõ báo giá · Đúng quy cách · Theo dõi giao nhận</span></div></div></footer>
+<article th:fragment="product(prod)" class="store-product" th:data-category-id="${prod.danhMuc != null ? prod.danhMuc.id : ''}" th:data-name="${prod.tenHang}" th:data-price="${prod.giaBanLe}">
+  <a class="product-art" th:href="@{/san_pham/chi_tiet(id=${prod.id})}"><span class="product-tag">VẬT LIỆU CÔNG TRÌNH</span><img loading="lazy" width="300" height="225" th:src="${prod.anhUrl != null && (prod.anhUrl.startsWith('/') || prod.anhUrl.startsWith('https://')) ? prod.anhUrl : '/images/store/' + (prod.danhMuc != null ? prod.danhMuc.maDanhMuc : 'material') + '.svg'}" th:alt="${'Minh họa ' + prod.tenHang}" onerror="this.onerror=null;this.src='/images/store/material.svg'"></a>
+  <span class="product-category" th:text="${prod.danhMuc != null ? prod.danhMuc.ten : 'Vật liệu xây dựng'}"></span><h3><a th:href="@{/san_pham/chi_tiet(id=${prod.id})}" th:text="${prod.tenHang}"></a></h3><p class="product-spec" th:text="${prod.quyCach}"></p>
+  <div class="product-bottom"><span class="product-price"><span th:text="${#numbers.formatDecimal(prod.giaBanLe,0,'POINT',0,'COMMA')}"></span> ₫ <small th:text="${'/ ' + prod.donViTinh}"></small></span><button type="button" class="add-button" data-add-product th:aria-label="${'Thêm ' + prod.tenHang + ' vào giỏ hàng'}" th:attr="data-id=${prod.id},data-name=${prod.tenHang},data-price=${prod.giaBanLe},data-unit=${prod.donViTinh},data-spec=${prod.quyCach},data-image=${prod.anhUrl}">+</button></div>
+</article>
+</body></html>

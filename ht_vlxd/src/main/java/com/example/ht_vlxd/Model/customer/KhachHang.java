@@ -1,39 +1,46 @@
 package com.example.ht_vlxd.Model.customer;
 import com.example.ht_vlxd.Model.auth.NguoiDung;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DocumentReference;
+import org.springframework.data.mongodb.core.mapping.Field;
+import org.springframework.data.mongodb.core.mapping.FieldType;
+import org.springframework.data.mongodb.core.index.Indexed;
 import java.math.BigDecimal;
 
-@Entity
-@Table(name = "khach_hang")
+@Document(collection = "khach_hang")
 public class KhachHang {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne
-    @JoinColumn(name = "nguoi_dung_id", nullable = false, unique = true)
+    @Version
+    private Long version;
+
+    @DocumentReference
     private NguoiDung nguoiDung;
 
-    @Column(name = "ma_khach_hang", nullable = false, unique = true, length = 20)
+    @Indexed(unique = true, sparse = true)
     private String maKhachHang;
 
-    @Column(name = "ten_cong_ty", length = 200)
+
     private String tenCongTy;
 
-    @Column(name = "ma_so_thue", length = 20)
+
     private String maSoThue;
 
-    @Column(name = "nguoi_dai_dien", length = 150)
+
     private String nguoiDaiDien;
 
-    @Column(name = "loai_khach", nullable = false)
+
     private String loaiKhach = "CA_NHAN";
 
-    @Column(name = "han_muc_no")
+
+    @Field(targetType = FieldType.DECIMAL128)
     private BigDecimal hanMucNo = BigDecimal.ZERO;
 
-    @Column(name = "ghi_chu", columnDefinition = "TEXT")
+
     private String ghiChu;
 
     public KhachHang() {}

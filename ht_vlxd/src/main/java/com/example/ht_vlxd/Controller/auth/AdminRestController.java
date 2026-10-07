@@ -101,6 +101,7 @@ public class AdminRestController {
     // ─────────────────────────────────────────────────────────────────────────
     // POST /api/admin/users/create — Tạo tài khoản nhân viên mới
     // ─────────────────────────────────────────────────────────────────────────
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/users/create")
     public ResponseEntity<?> createUser(@RequestBody Map<String, String> body) {
         String username = body.getOrDefault("username", "").trim();
@@ -163,6 +164,7 @@ public class AdminRestController {
     // ─────────────────────────────────────────────────────────────────────────
     // POST /api/admin/users/toggle-lock — Khóa / Mở khóa tài khoản
     // ─────────────────────────────────────────────────────────────────────────
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/users/toggle-lock")
     public ResponseEntity<?> toggleLock(@RequestBody Map<String, Object> body) {
         Long userId = Long.valueOf(body.get("userId").toString());
@@ -186,6 +188,7 @@ public class AdminRestController {
             message = "Đã khóa tài khoản " + nd.getUsername() + ".";
         } else {
             nd.setTrangThai("HOAT_DONG");
+            nd.setSoLanDangNhapSai(0);
             newStatus = "HOAT_DONG";
             message = "Đã mở khóa tài khoản " + nd.getUsername() + ".";
         }
@@ -201,6 +204,7 @@ public class AdminRestController {
     // ─────────────────────────────────────────────────────────────────────────
     // POST /api/admin/users/reset-password — Đặt lại mật khẩu về Admin@123
     // ─────────────────────────────────────────────────────────────────────────
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/users/reset-password")
     public ResponseEntity<?> resetPassword(@RequestBody Map<String, Object> body) {
         Long userId = Long.valueOf(body.get("userId").toString());
@@ -219,6 +223,7 @@ public class AdminRestController {
     // ─────────────────────────────────────────────────────────────────────────
     // POST /api/admin/users/change-role — Thay đổi vai trò người dùng
     // ─────────────────────────────────────────────────────────────────────────
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/users/change-role")
     public ResponseEntity<?> changeRole(@RequestBody Map<String, Object> body) {
         Long userId = Long.valueOf(body.get("userId").toString());
@@ -240,7 +245,7 @@ public class AdminRestController {
         // Bảo vệ không cho đổi vai trò của tài khoản admin cuối
         if ("QUAN_TRI_VIEN".equals(oldRole) && !newRoleName.equals("QUAN_TRI_VIEN")) {
             long adminCount = nguoiDungRepository.findAll().stream()
-                    .filter(u -> u.getRole() != null && "QUAN_TRI_VIEN".equals(u.getRole().getName()))
+                    .filter(u -> "HOAT_DONG".equals(u.getTrangThai()) && u.getRole() != null && "QUAN_TRI_VIEN".equals(u.getRole().getName()))
                     .count();
             if (adminCount <= 1) {
                 return ResponseEntity.badRequest().body("Không thể đổi vai trò của Quản trị viên duy nhất còn lại trong hệ thống.");
@@ -269,6 +274,7 @@ public class AdminRestController {
     // ─────────────────────────────────────────────────────────────────────────
     // POST /api/admin/users/update — Cập nhật thông tin cá nhân tài khoản
     // ─────────────────────────────────────────────────────────────────────────
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/users/update")
     public ResponseEntity<?> updateUser(@RequestBody Map<String, Object> body) {
         Long userId = Long.valueOf(body.get("userId").toString());
@@ -296,6 +302,7 @@ public class AdminRestController {
     // ─────────────────────────────────────────────────────────────────────────
     // DELETE /api/admin/users/delete — Xóa tài khoản (chỉ khi không có giao dịch)
     // ─────────────────────────────────────────────────────────────────────────
+    @org.springframework.transaction.annotation.Transactional
     @PostMapping("/users/delete")
     public ResponseEntity<?> deleteUser(@RequestBody Map<String, Object> body) {
         Long userId = Long.valueOf(body.get("userId").toString());
@@ -309,7 +316,7 @@ public class AdminRestController {
         // Bảo vệ QUAN_TRI_VIEN
         if (nd.getRole() != null && "QUAN_TRI_VIEN".equals(nd.getRole().getName())) {
             long adminCount = nguoiDungRepository.findAll().stream()
-                    .filter(u -> u.getRole() != null && "QUAN_TRI_VIEN".equals(u.getRole().getName()))
+                    .filter(u -> "HOAT_DONG".equals(u.getTrangThai()) && u.getRole() != null && "QUAN_TRI_VIEN".equals(u.getRole().getName()))
                     .count();
             if (adminCount <= 1) {
                 return ResponseEntity.badRequest().body("Không thể xóa Quản trị viên duy nhất của hệ thống.");
@@ -317,8 +324,9 @@ public class AdminRestController {
         }
 
         try {
-            nguoiDungRepository.deleteById(userId);
-            return ResponseEntity.ok("Đã xóa tài khoản '" + nd.getUsername() + "' khỏi hệ thống.");
+            nd.setTrangThai("BI_KHOA");
+            nguoiDungRepository.save(nd);
+            return ResponseEntity.ok("Đã ngừng tài khoản '" + nd.getUsername() + "'; giữ nguyên lịch sử giao dịch.");
         } catch (Exception e) {
             // Có ràng buộc khóa ngoại (có giao dịch liên quan)
             return ResponseEntity.badRequest().body("Không thể xóa tài khoản này vì có dữ liệu giao dịch liên quan. Hãy khóa tài khoản thay vì xóa.");

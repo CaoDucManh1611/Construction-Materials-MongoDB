@@ -3,45 +3,74 @@ import com.example.ht_vlxd.Model.sales.DonHang;
 import com.example.ht_vlxd.Model.auth.NguoiDung;
 import com.example.ht_vlxd.Model.supplier.NhaCungCap;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DocumentReference;
+import org.springframework.data.mongodb.core.mapping.Field;
+import org.springframework.data.mongodb.core.mapping.FieldType;
+import org.springframework.data.mongodb.core.index.Indexed;
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
-@Entity
-@Table(name = "phieu_kho")
+@Document(collection = "phieu_kho")
 public class PhieuKho {
+    private Long nguoiDuyetId;
+    public Long getNguoiDuyetId() { return nguoiDuyetId; }
+    public void setNguoiDuyetId(Long value) { this.nguoiDuyetId = value; }
+    private LocalDateTime ngayDuyet;
+    public LocalDateTime getNgayDuyet() { return ngayDuyet; }
+    public void setNgayDuyet(LocalDateTime value) { this.ngayDuyet = value; }
+    private String bienBanNhapHang;
+    public String getBienBanNhapHang() { return bienBanNhapHang; }
+    public void setBienBanNhapHang(String value) { this.bienBanNhapHang = value; }
+    private Long tonKhoKiemKeId;
+    public Long getTonKhoKiemKeId() { return tonKhoKiemKeId; }
+    public void setTonKhoKiemKeId(Long value) { this.tonKhoKiemKeId = value; }
+    @Field(targetType = FieldType.DECIMAL128)
+    private BigDecimal soLuongSoSach;
+    public BigDecimal getSoLuongSoSach() { return soLuongSoSach; }
+    public void setSoLuongSoSach(BigDecimal value) { this.soLuongSoSach = value; }
+    @Field(targetType = FieldType.DECIMAL128)
+    private BigDecimal soLuongThucTe;
+    public BigDecimal getSoLuongThucTe() { return soLuongThucTe; }
+    public void setSoLuongThucTe(BigDecimal value) { this.soLuongThucTe = value; }
+
+    private java.util.List<PhieuKhoChiTiet> chiTiet = new java.util.ArrayList<>();
+    public java.util.List<PhieuKhoChiTiet> getChiTiet() { return chiTiet; }
+    public void setChiTiet(java.util.List<PhieuKhoChiTiet> chiTiet) { this.chiTiet = chiTiet; }
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "ma_phieu", nullable = false, unique = true, length = 30)
+    @Version
+    private Long version;
+
+    @Indexed(unique = true, sparse = true)
     private String maPhieu;
 
-    @Column(name = "loai_phieu", nullable = false)
+
     private String loaiPhieu; // NHAP, XUAT
 
-    @ManyToOne
-    @JoinColumn(name = "kho_id", nullable = false)
+    @DocumentReference
     private Kho kho;
 
-    @ManyToOne
-    @JoinColumn(name = "nguoi_tao_id", nullable = false)
+    @DocumentReference
     private NguoiDung nguoiTao;
 
-    @ManyToOne
-    @JoinColumn(name = "don_hang_id")
+    @DocumentReference
     private DonHang donHang;
 
-    @ManyToOne
-    @JoinColumn(name = "nha_cung_cap_id")
+    @DocumentReference
     private NhaCungCap nhaCungCap;
 
-    @Column(name = "ngay_lap", nullable = false)
+
     private LocalDateTime ngayLap = LocalDateTime.now();
 
-    @Column(name = "ghi_chu", columnDefinition = "TEXT")
+
     private String ghiChu;
 
-    @Column(name = "trang_thai", nullable = false)
+
     private String trangThai = "NHAP"; // NHAP, DA_DUYET, HUY
 
     public PhieuKho() {}

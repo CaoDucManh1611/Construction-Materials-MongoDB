@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
-<head>
+<head><link rel="icon" type="image/svg+xml" href="/images/store/favicon.svg">
+<script src="/js/security.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Quản lý kho - Sài Gòn CMC</title>
@@ -44,8 +45,10 @@
       margin-bottom: 16px;
     }
   </style>
+<link rel="stylesheet" href="/css/site.css">
+<script src="/js/ui.js" defer></script>
 </head>
-<body>
+<body class="workspace">
 
 <div th:replace="~{bo_cuc/header :: header}"></div>
 
@@ -197,7 +200,7 @@
 
             <div class="form-group">
               <label class="form-label">Ghi chú phiếu kho</label>
-              <textarea class="form-control" id="slip-note" rows="2" placeholder="Ghi chú thêm về quy cách nhận hàng, tài xế vận chuyển, v.v..."></textarea>
+              <textarea class="form-control" id="slip-note" rows="2" placeholder="Phiếu nhập: ghi biên bản kiểm tra số lượng, chất lượng và quy cách hàng nhận (bắt buộc). Phiếu xuất: ghi chú giao hàng."></textarea>
             </div>
 
             <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:20px;">
@@ -449,6 +452,10 @@
           <label class="form-label" style="font-size:11px;">Số lượng</label>
           <input type="number" class="form-control" id="line-sl-${id}" min="0.001" step="0.001" placeholder="0" required>
         </div>
+        <div class="form-group" style="flex:1.5; margin:0;">
+          <label class="form-label" for="line-price-${id}" style="font-size:11px;">Đơn giá nhập (đ)</label>
+          <input type="number" class="form-control" id="line-price-${id}" min="0" step="0.01" value="0">
+        </div>
         <div class="form-group" style="flex:2; margin:0;">
           <label class="form-label" style="font-size:11px;">Ghi chú (tuỳ chọn)</label>
           <input type="text" class="form-control" id="line-gc-${id}" placeholder="Quy cách, lô hàng...">
@@ -483,7 +490,9 @@
         const sl = document.getElementById('line-sl-' + i).value;
         const gc = document.getElementById('line-gc-' + i).value;
         if (!hhId || !sl) continue;
-        chiTiet.push({ hangHoaId: hhId, soLuong: sl, ghiChu: gc });
+        const price = document.getElementById('line-price-' + i).value;
+        if (loaiPhieu === 'NHAP' && Number(price) <= 0) throw new Error('Nhập đơn giá mua cho từng dòng hàng.');
+        chiTiet.push({ hangHoaId: hhId, soLuong: sl, donGia: price, ghiChu: gc });
       }
 
       if (chiTiet.length === 0) {
@@ -492,7 +501,7 @@
         return;
       }
 
-      const payload = { loaiPhieu, khoId, ghiChu, chiTiet };
+      const payload = { loaiPhieu, khoId, ghiChu, chiTiet, bienBanNhapHang: ghiChu };
       if (loaiPhieu === 'NHAP') {
         const nccId = document.getElementById('slip-ncc').value;
         if (nccId) payload.nhaCungCapId = nccId;
@@ -576,5 +585,6 @@
   });
 </script>
 
+<script src="/js/business.js"></script>
 </body>
 </html>

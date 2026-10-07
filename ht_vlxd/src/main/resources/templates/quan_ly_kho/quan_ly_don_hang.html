@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
-<head>
+<head><link rel="icon" type="image/svg+xml" href="/images/store/favicon.svg">
+<script src="/js/security.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Đơn hàng xuất kho - Sài Gòn CMC</title>
@@ -50,8 +51,10 @@
     .step-going   { background: #fff3e0; color: #e65100; }
     .step-done    { background: #f3e5f5; color: #6a1b9a; }
   </style>
+<link rel="stylesheet" href="/css/site.css">
+<script src="/js/ui.js" defer></script>
 </head>
-<body>
+<body class="workspace">
 
 <div th:replace="~{bo_cuc/header :: header}"></div>
 
@@ -190,7 +193,7 @@
 
   function orderStatusBadge(s) {
     switch(s) {
-      case 'DA_XAC_NHAN': return '<span class="badge badge-blue">✅ Đã Xác Nhận - Chờ Xuất</span>';
+      case 'DA_XUAT_KHO': return '<span class="badge badge-blue">✅ Đã xuất kho — chờ giao</span>';
       case 'DANG_GIAO':   return '<span class="badge badge-teal">🚚 Đang Giao Hàng</span>';
       case 'HOAN_THANH':  return '<span class="badge badge-green">🎉 Hoàn Thành</span>';
       default: return `<span class="badge badge-secondary">${s}</span>`;
@@ -224,7 +227,7 @@
         ).join('');
 
         let actionBtn = '';
-        if (o.trangThai === 'DA_XAC_NHAN' && !o.daLapLoTrinh) {
+        if (o.trangThai === 'DA_XUAT_KHO' && !o.daLapLoTrinh) {
           actionBtn = `<button class="btn btn-primary btn-sm" onclick="openRouteModal(${o.id})">
             🚚 Lập lộ trình
           </button>`;
@@ -324,5 +327,6 @@
   document.addEventListener('DOMContentLoaded', loadOrders);
 </script>
 
+<script src="/js/business.js"></script>
 </body>
 </html>

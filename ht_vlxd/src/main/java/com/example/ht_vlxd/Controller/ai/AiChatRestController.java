@@ -64,7 +64,7 @@ public class AiChatRestController {
                     }
                 }
             }
-            
+
             response.put("reply", "Rất tiếc, tôi gặp sự cố khi giải mã phản hồi từ hệ thống AI.");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
 

@@ -1,6 +1,7 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
-<head>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head><link rel="icon" type="image/svg+xml" href="/images/store/favicon.svg">
+<script src="/js/security.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Danh mục hàng hóa - Sài Gòn CMC</title>
@@ -34,8 +35,10 @@
       background-color: #fafbfc;
     }
   </style>
+<link rel="stylesheet" href="/css/site.css">
+<script src="/js/ui.js" defer></script>
 </head>
-<body>
+<body class="workspace">
 
 <div th:replace="~{bo_cuc/header :: header}"></div>
 
@@ -102,9 +105,10 @@
                 <td><span class="badge badge-green" th:text="${prod.trangThai}">Kinh doanh</span></td>
                 <td style="text-align: center;">
                   <div class="flex-gap-8" style="justify-content: center;">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="editCatalog(this, 'productModal')" th:attr="data-id=${prod.id},data-ma-hang=${prod.maHang},data-ten-hang=${prod.tenHang},data-danh-muc-id=${prod.danhMuc != null ? prod.danhMuc.id : ''},data-don-vi-tinh=${prod.donViTinh},data-quy-cach=${prod.quyCach},data-gia-ban-le=${prod.giaBanLe},data-gia-ban-si=${prod.giaBanSi},data-anh-url=${prod.anhUrl}">Đề xuất sửa</button>
                     <form th:id="'delete-prod-form-' + ${prod.id}" th:action="@{/kinh_doanh/danh_muc_hang_hoa/delete}" method="post">
                       <input type="hidden" name="id" th:value="${prod.id}">
-                      <button type="button" class="btn btn-danger btn-sm" th:attr="onclick=|confirmDeleteProduct('${prod.id}')|">Xóa</button>
+                      <button type="button" class="btn btn-danger btn-sm" th:attr="onclick=|confirmDeleteProduct('${prod.id}')|">Đề xuất ngừng</button>
                     </form>
                   </div>
                 </td>
@@ -140,9 +144,10 @@
                 <td th:text="${cat.moTa}">Mô tả chi tiết</td>
                 <td style="text-align: center;">
                   <div class="flex-gap-8" style="justify-content: center;">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="editCatalog(this, 'categoryModal')" th:attr="data-id=${cat.id},data-ma-danh-muc=${cat.maDanhMuc},data-ten=${cat.ten},data-mo-ta=${cat.moTa}">Đề xuất sửa</button>
                     <form th:id="'delete-cat-form-' + ${cat.id}" th:action="@{/kinh_doanh/danh_muc/delete}" method="post">
                       <input type="hidden" name="id" th:value="${cat.id}">
-                      <button type="button" class="btn btn-danger btn-sm" th:attr="onclick=|confirmDeleteCategory('${cat.id}')|">Xóa</button>
+                      <button type="button" class="btn btn-danger btn-sm" th:attr="onclick=|confirmDeleteCategory('${cat.id}')|">Đề xuất ngừng</button>
                     </form>
                   </div>
                 </td>
@@ -157,10 +162,11 @@
     <div class="modal" id="productModal">
       <div class="modal-content">
         <div class="modal-header">
-          <span style="font-weight: 700; color: var(--kh-dark); font-size: 16px;">Thêm Sản Phẩm Mới</span>
+          <span style="font-weight: 700; color: var(--kh-dark); font-size: 16px;">Đề xuất thông tin hàng hóa</span>
           <button onclick="closeProductModal()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted);">&times;</button>
         </div>
         <form th:action="@{/kinh_doanh/danh_muc_hang_hoa/add}" method="post" enctype="multipart/form-data">
+          <input type="hidden" name="id">
           <div class="card-body">
             <div class="form-row">
               <div class="form-group">
@@ -215,7 +221,7 @@
 
             <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 12px;">
               <button type="button" class="btn btn-secondary" onclick="closeProductModal()">Hủy bỏ</button>
-              <button type="submit" class="btn btn-primary">Lưu sản phẩm</button>
+              <button type="submit" class="btn btn-primary">Gửi đề xuất duyệt</button>
             </div>
           </div>
         </form>
@@ -226,10 +232,11 @@
     <div class="modal" id="categoryModal">
       <div class="modal-content">
         <div class="modal-header">
-          <span style="font-weight: 700; color: var(--kh-dark); font-size: 16px;">Thêm Nhóm Danh Mục Mới</span>
+          <span style="font-weight: 700; color: var(--kh-dark); font-size: 16px;">Đề xuất thông tin danh mục</span>
           <button onclick="closeCategoryModal()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted);">&times;</button>
         </div>
         <form th:action="@{/kinh_doanh/danh_muc/add}" method="post">
+          <input type="hidden" name="id">
           <div class="card-body">
             <div class="form-group">
               <label class="form-label">Mã danh mục</label>
@@ -245,7 +252,7 @@
             </div>
             <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 12px;">
               <button type="button" class="btn btn-secondary" onclick="closeCategoryModal()">Hủy bỏ</button>
-              <button type="submit" class="btn btn-primary">Lưu danh mục</button>
+              <button type="submit" class="btn btn-primary">Gửi đề xuất duyệt</button>
             </div>
           </div>
         </form>
@@ -273,6 +280,7 @@
   }
 
   function openProductModal() {
+    document.querySelector('#productModal form').reset();
     document.getElementById('productModal').style.display = 'flex';
   }
   function closeProductModal() {
@@ -281,6 +289,7 @@
 
   // Categories Modal
   function openCategoryModal() {
+    document.querySelector('#categoryModal form').reset();
     document.getElementById('categoryModal').style.display = 'flex';
   }
   function closeCategoryModal() {
@@ -288,17 +297,25 @@
   }
 
   function confirmDeleteProduct(id) {
-    showConfirm('Bạn có chắc muốn xóa sản phẩm này?', function() {
+    showConfirm('Gửi đề xuất ngừng kinh doanh sản phẩm này để quản lý duyệt?', function() {
       document.getElementById('delete-prod-form-' + id).submit();
     });
   }
 
   function confirmDeleteCategory(id) {
-    showConfirm('Bạn có chắc muốn xóa danh mục này?', function() {
+    showConfirm('Gửi đề xuất ngừng danh mục này để quản lý duyệt?', function() {
       document.getElementById('delete-cat-form-' + id).submit();
     });
   }
 </script>
+<script>
+function editCatalog(button, modalId) {
+  const modal = document.getElementById(modalId), form = modal.querySelector('form'); form.reset();
+  for (const input of form.elements) if (Object.hasOwn(button.dataset, input.name)) input.value = button.dataset[input.name];
+  modal.style.display = 'flex';
+}
+</script>
 
+<script src="/js/business.js"></script>
 </body>
 </html>

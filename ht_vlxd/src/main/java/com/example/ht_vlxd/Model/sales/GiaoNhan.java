@@ -1,55 +1,67 @@
 package com.example.ht_vlxd.Model.sales;
 import com.example.ht_vlxd.Model.auth.NguoiDung;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DocumentReference;
+import org.springframework.data.mongodb.core.mapping.Field;
+import org.springframework.data.mongodb.core.mapping.FieldType;
+import org.springframework.data.mongodb.core.index.Indexed;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "giao_nhan")
+@Document(collection = "giao_nhan")
 public class GiaoNhan {
+    private String bienBanBanGiao;
+    public String getBienBanBanGiao() { return bienBanBanGiao; }
+    public void setBienBanBanGiao(String value) { this.bienBanBanGiao = value; }
+    private java.util.List<String> bienBanSuVu = new java.util.ArrayList<>();
+    public java.util.List<String> getBienBanSuVu() { return bienBanSuVu; }
+    public void setBienBanSuVu(java.util.List<String> value) { this.bienBanSuVu = value; }
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "ma_giao_nhan", nullable = false, unique = true, length = 30)
+    @Version
+    private Long version;
+
+    @Indexed(unique = true, sparse = true)
     private String maGiaoNhan;
 
-    @ManyToOne
-    @JoinColumn(name = "don_hang_id", nullable = false)
+    @DocumentReference
     private DonHang donHang;
 
-    @ManyToOne
-    @JoinColumn(name = "nv_giao_id")
+    @DocumentReference
     private NguoiDung nvGiao;
 
-    @Column(name = "ngay_giao_du_kien")
+
     private LocalDateTime ngayGiaoDuKien;
 
-    @Column(name = "ngay_giao_thuc")
+
     private LocalDateTime ngayGiaoThuc;
 
-    @Column(name = "dia_chi_giao", columnDefinition = "TEXT")
+
     private String diaChiGiao;
 
-    @Column(name = "lo_trinh", columnDefinition = "TEXT")
+
     private String loTrinh;
 
-    @Column(name = "trang_thai", nullable = false)
+
     private String trangThai = "CHO_GIAO"; // CHO_GIAO, DANG_GIAO, DA_GIAO, THAT_BAI
 
-    @Column(name = "ghi_chu_giao", columnDefinition = "TEXT")
+
     private String ghiChuGiao;
 
-    @Column(name = "nguoi_nhan", length = 150)
+
     private String nguoiNhan;
 
-    @Column(name = "so_dien_thoai_nhan", length = 20)
+
     private String soDienThoaiNhan;
 
-    @Column(name = "da_ban_giao")
+
     private Boolean daBanGiao = false;
 
-    @Column(name = "ngay_ban_giao")
+
     private LocalDateTime ngayBanGiao;
 
     public GiaoNhan() {}

@@ -1,6 +1,7 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
-<head>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head><link rel="icon" type="image/svg+xml" href="/images/store/favicon.svg">
+<script src="/js/security.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Quản lý đơn hàng - Sài Gòn CMC</title>
@@ -38,8 +39,10 @@
       to { transform: translateY(0); opacity: 1; }
     }
   </style>
+<link rel="stylesheet" href="/css/site.css">
+<script src="/js/ui.js" defer></script>
 </head>
-<body>
+<body class="workspace">
 
 <div th:replace="~{bo_cuc/header :: header}"></div>
 
@@ -161,7 +164,7 @@
                   <strong style="color: var(--kd-dark); font-size: 16px;" id="sales-total-lbl">0đ</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between; font-size: 13px; color: var(--text-muted);">
-                  <span>Yêu cầu cọc (30%):</span>
+                  <span>Cọc dự kiến (chốt khi lập hợp đồng):</span>
                   <span id="sales-deposit-lbl">0đ</span>
                 </div>
               </div>
@@ -256,7 +259,7 @@
               <span id="modal-order-total" style="color: var(--kd-primary); font-weight: 700;">0đ</span>
             </div>
             <div style="display: flex; justify-content: space-between; font-size: 13px; color: var(--text-muted);">
-              <span>Tiền đặt cọc yêu cầu (30%):</span>
+              <span>Cọc dự kiến (chốt khi lập hợp đồng):</span>
               <span id="modal-order-deposit">0đ</span>
             </div>
           </div>
@@ -696,5 +699,6 @@
   });
 </script>
 
+<script src="/js/business.js"></script>
 </body>
 </html>

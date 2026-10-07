@@ -3,46 +3,72 @@ import com.example.ht_vlxd.Model.sales.DonHang;
 import com.example.ht_vlxd.Model.sales.HopDong;
 import com.example.ht_vlxd.Model.customer.KhachHang;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DocumentReference;
+import org.springframework.data.mongodb.core.mapping.Field;
+import org.springframework.data.mongodb.core.mapping.FieldType;
+import org.springframework.data.mongodb.core.index.Indexed;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "cong_no")
+@Document(collection = "cong_no")
 public class CongNo {
+    @Field(targetType = FieldType.DECIMAL128)
+    private BigDecimal soTienDaHoan = BigDecimal.ZERO;
+    public BigDecimal getSoTienDaHoan() { return soTienDaHoan; }
+    public void setSoTienDaHoan(BigDecimal value) { soTienDaHoan = value; }
+    private Long nhaCungCapId;
+    public Long getNhaCungCapId() { return nhaCungCapId; }
+    public void setNhaCungCapId(Long value) { this.nhaCungCapId = value; }
+    @Indexed(unique = true, sparse = true)
+    private Long phieuNhapId;
+    public Long getPhieuNhapId() { return phieuNhapId; }
+    public void setPhieuNhapId(Long value) { this.phieuNhapId = value; }
+    private String loaiCongNo = "PHAI_THU";
+    public String getLoaiCongNo() { return loaiCongNo; }
+    public void setLoaiCongNo(String value) { this.loaiCongNo = value; }
+    @Field(targetType = FieldType.DECIMAL128)
+    private BigDecimal soTienHoanTra = BigDecimal.ZERO;
+    public BigDecimal getSoTienHoanTra() { return soTienHoanTra; }
+    public void setSoTienHoanTra(BigDecimal value) { this.soTienHoanTra = value; }
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "khach_hang_id", nullable = false)
+    @Version
+    private Long version;
+
+    @DocumentReference
     private KhachHang khachHang;
 
-    @ManyToOne
-    @JoinColumn(name = "don_hang_id")
+    @DocumentReference
+    @Indexed(unique = true, sparse = true)
     private DonHang donHang;
 
-    @ManyToOne
-    @JoinColumn(name = "hop_dong_id")
+    @DocumentReference
     private HopDong hopDong;
 
-    @Column(name = "so_tien_no", nullable = false)
+
+    @Field(targetType = FieldType.DECIMAL128)
     private BigDecimal soTienNo;
 
-    @Column(name = "so_tien_da_tt", nullable = false)
+
+    @Field(targetType = FieldType.DECIMAL128)
     private BigDecimal soTienDaTt = BigDecimal.ZERO;
 
-    @Column(name = "ngay_phat_sinh", nullable = false)
+
     private LocalDateTime ngayPhatSinh = LocalDateTime.now();
 
-    @Column(name = "han_thanh_toan")
+
     private LocalDate hanThanhToan;
 
-    @Column(name = "trang_thai", nullable = false)
+
     private String trangThai = "CON_NO";
 
-    @Column(name = "ghi_chu", columnDefinition = "TEXT")
+
     private String ghiChu;
 
     public CongNo() {}

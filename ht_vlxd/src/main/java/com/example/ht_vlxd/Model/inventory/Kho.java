@@ -1,28 +1,36 @@
 package com.example.ht_vlxd.Model.inventory;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DocumentReference;
+import org.springframework.data.mongodb.core.mapping.Field;
+import org.springframework.data.mongodb.core.mapping.FieldType;
+import org.springframework.data.mongodb.core.index.Indexed;
 import java.math.BigDecimal;
 
-@Entity
-@Table(name = "kho")
+@Document(collection = "kho")
 public class Kho {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "ma_kho", nullable = false, unique = true, length = 20)
+    @Version
+    private Long version;
+
+    @Indexed(unique = true, sparse = true)
     private String maKho;
 
-    @Column(name = "ten_kho", nullable = false, length = 150)
+
     private String tenKho;
 
-    @Column(name = "dia_chi", columnDefinition = "TEXT")
+
     private String diaChi;
 
-    @Column(name = "dien_tich")
+
+    @Field(targetType = FieldType.DECIMAL128)
     private BigDecimal dienTich;
 
-    @Column(name = "trang_thai", nullable = false)
+
     private String trangThai = "HOAT_DONG";
 
     public Kho() {}

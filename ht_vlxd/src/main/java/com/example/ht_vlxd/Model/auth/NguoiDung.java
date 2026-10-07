@@ -1,47 +1,58 @@
 package com.example.ht_vlxd.Model.auth;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DocumentReference;
+import org.springframework.data.mongodb.core.mapping.Field;
+import org.springframework.data.mongodb.core.mapping.FieldType;
+import org.springframework.data.mongodb.core.index.Indexed;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "nguoi_dung")
+@Document(collection = "nguoi_dung")
 public class NguoiDung {
+    private int soLanDangNhapSai = 0;
+    public int getSoLanDangNhapSai() { return soLanDangNhapSai; }
+    public void setSoLanDangNhapSai(int value) { this.soLanDangNhapSai = value; }
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "username", nullable = false, unique = true, length = 100)
+    @Version
+    private Long version;
+
+    @Indexed(unique = true, sparse = true)
     private String username;
 
-    @Column(name = "password_hash", nullable = false, length = 255)
+
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private String passwordHash;
 
-    @Column(name = "ho_ten", nullable = false, length = 150)
+
     private String hoTen;
 
-    @Column(name = "email", unique = true, length = 150)
+    @Indexed(unique = true, sparse = true)
     private String email;
 
-    @Column(name = "so_dien_thoai", length = 20)
+
     private String soDienThoai;
 
-    @Column(name = "dia_chi", columnDefinition = "TEXT")
+
     private String diaChi;
 
-    @Column(name = "avatar_url", length = 500)
+
     private String avatarUrl;
 
-    @ManyToOne
-    @JoinColumn(name = "role_id", nullable = false)
+    @DocumentReference
     private Role role;
 
-    @Column(name = "trang_thai", nullable = false)
+
     private String trangThai = "HOAT_DONG";
 
-    @Column(name = "ngay_tao")
+
     private LocalDateTime ngayTao = LocalDateTime.now();
 
-    @Column(name = "ngay_cap_nhat")
+
     private LocalDateTime ngayCapNhat = LocalDateTime.now();
 
     public NguoiDung() {}
