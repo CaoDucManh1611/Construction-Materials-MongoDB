@@ -1,12 +1,11 @@
 # Database MongoDB — Sài Gòn CMC
 
-Database mặc định: **`vlxd_db`**. MongoDB dùng **collection** tương ứng với bảng và **document** tương ứng với dòng dữ liệu. Tài liệu này mô tả cấu trúc đang được source sử dụng, không phải bản thiết kế SQL cũ.
+Database mặc định: **`vlxd_db`**. MongoDB dùng **collection** tương ứng với bảng và **document** tương ứng với dòng dữ liệu. Tài liệu này mô tả cấu trúc đang được source sử dụng.
 
 ## File sử dụng
 
 - [`Database.mongodb.js`](Database.mongodb.js): tạo collection và index bằng mongosh, chạy lại được; không xóa dữ liệu, không chèn tài khoản hay chứng từ.
 - [`compose.yaml`](compose.yaml): chạy MongoDB replica set bằng Docker.
-- `Database.sql`: lịch sử MySQL, không dùng cho ứng dụng hiện tại.
 
 ```powershell
 mongosh "mongodb://localhost:27017/vlxd_db?replicaSet=rs0" --file Database.mongodb.js
@@ -483,7 +482,7 @@ Nguồn: [NhaCungCap.java](ht_vlxd/src/main/java/com/example/ht_vlxd/Model/suppl
 | `_id` | string | Tên collection được cấp ID |
 | `value` | int64 | ID cuối được cấp bởi thao tác `$inc` nguyên tử |
 
-Không đặt lại bộ đếm của database đã có dữ liệu. Công cụ chuyển dữ liệu cũ tạo giá trị bộ đếm từ ID lớn nhất.
+Không đặt lại bộ đếm của database đã có dữ liệu. Khi nhập dữ liệu có sẵn ID, giá trị bộ đếm phải ít nhất bằng ID lớn nhất của collection tương ứng.
 
 ## Index
 

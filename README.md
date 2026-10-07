@@ -1,6 +1,6 @@
 # Quản lý cửa hàng vật liệu xây dựng — MongoDB
 
-Ứng dụng Java 21+, Spring Boot 4.0.6, Spring Data MongoDB, Spring Security và Thymeleaf. Thiết kế nghiệp vụ đối chiếu tài liệu phase3; MongoDB là cơ sở dữ liệu chính thức. Không còn cấu hình kết nối MySQL/JPA.
+Ứng dụng Java 21+, Spring Boot 4.0.6, Spring Data MongoDB, Spring Security và Thymeleaf. Thiết kế nghiệp vụ đối chiếu tài liệu phase3; MongoDB là cơ sở dữ liệu chính thức.
 
 ## Chạy dự án
 
@@ -54,17 +54,6 @@ Xem **[Database.mongodb.md](Database.mongodb.md)** để đọc đầy đủ 22 
 - Tham chiếu giữa collection dùng ID số nguyên giữ tương thích API. `sequences` cấp ID nguyên tử; `@Version` kiểm soát ghi đồng thời. Mã chứng từ, mã giao dịch và cặp hàng–kho có unique index.
 - Tiền/số lượng dùng `BigDecimal` và MongoDB `Decimal128`. Các thay đổi tiền/kho/chứng từ liên quan nằm trong cùng transaction.
 
-## Dữ liệu MySQL cũ
-
-`Database.sql` là tài liệu lịch sử của source cũ, không dùng để khởi tạo bản MongoDB. Công cụ offline chỉ chuẩn bị file nhập, không kết nối hay ghi đè database:
-
-```powershell
-python scripts/convert_mysql_export.py mysql-export.json --output mongo-import
-python scripts/test_mysql_conversion.py
-```
-
-Đầu vào là JSON dạng `{ "ten_bang": [ { "id": 1, ... } ] }`, cột tên snake_case như source cũ. Đầu ra là MongoDB Extended JSON, giữ ID, Decimal128, tham chiếu, nhúng chi tiết và tạo sequence. Công cụ không đọc trực tiếp file SQL. Đọc `RECONCILE.md` sinh ra và đối soát tiền cọc, công nợ, tồn kho, giá hợp đồng trước khi nhập vào **database mới**. Source cũ có sai nghiệp vụ nên đổi định dạng không tự xác nhận số dư đúng. Chưa thực hiện nhập dữ liệu MySQL thực tế của người dùng.
-
 ## Kiểm tra
 
 Các test tích hợp dùng MongoDB riêng; tuyệt đối không trỏ `TEST_MONGODB_URI` vào database sử dụng thật. Ví dụ có replica set test `rs-test` tại cổng 27028:
@@ -76,7 +65,7 @@ $env:TEST_MONGODB_URI='mongodb://127.0.0.1:27028/vlxd_test_workflows?replicaSet=
 .\mvnw.cmd package -DskipTests
 cd ..
 python scripts/check_javascript.py
-python scripts/test_mysql_conversion.py
+node scripts/check_mongodb_schema.cjs
 ```
 
 Kiểm thử bao gồm phân quyền/CSRF, khóa đăng nhập, thực thu cọc, chống ghi trùng, xuất kho lặp/thiếu hàng, đổi/trả, hoàn tiền, công nợ NCC và duyệt danh mục. Kiểm tra giao diện thực tế bằng Playwright trên database demo riêng.
