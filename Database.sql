@@ -1,3 +1,5 @@
+-- LỊCH SỬ MYSQL: không dùng để khởi tạo ứng dụng MongoDB hiện tại.
+-- Cấu trúc chính thức: Database.mongodb.md; script tạo collection/index: Database.mongodb.js.
 -- ============================================================
 --  SCHEMA: Quản lý Cửa hàng Vật liệu Xây dựng (VLXD)
 --  Tương thích: MySQL 8.0+  |  Spring Boot + JPA/Hibernate

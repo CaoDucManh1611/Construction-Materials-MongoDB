@@ -46,6 +46,8 @@ Hủy/ngừng giữ lịch sử và liên kết chứng từ. Hợp đồng đã
 
 ## Thiết kế dữ liệu
 
+Xem **[Database.mongodb.md](Database.mongodb.md)** để đọc đầy đủ 22 collection, các trường BSON, tham chiếu, chi tiết nhúng, index và sơ đồ. **[Database.mongodb.js](Database.mongodb.js)** là script mongosh tạo collection/index cho database mới; không chứa dữ liệu thật.
+
 - Collection độc lập: `nguoi_dung`, `role`, `khach_hang`, `nha_cung_cap`, `danh_muc`, `hang_hoa`, `kho`, `ton_kho`, `don_hang`, `hop_dong`, `phieu_kho`, `giao_nhan`, `doi_tra_hang`, `cong_no`, `thanh_toan`, `bao_cao`, `dinh_muc_vat_lieu`.
 - Collection bổ sung: `bang_bao_gia`, `hoa_don`, `lenh_xuat`, `de_xuat_danh_muc`, `sequences`.
 - Chi tiết đơn hàng/phiếu kho nhúng trong chứng từ cha. Hợp đồng, báo giá và lệnh xuất lưu bản chi tiết giá/số lượng; thay đổi giá danh mục không sửa giá chứng từ cũ.
